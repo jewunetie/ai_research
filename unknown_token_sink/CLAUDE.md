@@ -47,7 +47,7 @@ By providing a dedicated "escape hatch" and training the model to recognize patt
 1. High `<UNKNOWN>` usage on synthetic gibberish (>90%)
 2. Low `<UNKNOWN>` usage on in-distribution data (<5%)
 3. Appropriate `<UNKNOWN>` usage on real OOD data (TBD based on dataset)
-4. No significant degradation of in-distribution accuracy
+4. Minimal degradation of in-distribution accuracy (<5% relative to baseline)
 5. Measurable reduction in hallucination rate compared to baseline
 
 ## Novelty

@@ -62,7 +62,7 @@
 - ✅ Strong performance on commonsense reasoning
 
 **Considerations**:
-- Smaller than Gemma 3 270M in total parameters but well-optimized
+- More parameters than Gemma 3 270M (360M vs 270M) but still highly efficient with GQA
 
 **Verdict**: **Excellent balance of performance and efficiency**
 
@@ -315,6 +315,24 @@
 | **SQuAD 2.0** | OOD eval | 150k questions | Unanswerable = explicit abstention target |
 | **PubMedQA** | OOD eval | 1k QA pairs | Domain shift testing |
 | **TruthfulQA** | Hallucination eval | 817 questions | Measure reduction in false claims |
+
+---
+
+### Note on UNKNOWN Rate Targets
+
+The UNKNOWN rate targets vary across datasets based on their relationship to the training distribution:
+
+- **In-distribution training data (<5% UNKNOWN)**: Strictest target. The model should confidently handle data from its training distribution and rarely abstain.
+
+- **SQuAD 2.0 answerable (<10% UNKNOWN)**: Slightly higher acceptable rate. While SQuAD questions are well-formed, the QA format and domain may differ from FineWeb-Edu educational text, so some abstention is reasonable.
+
+- **SQuAD 2.0 unanswerable (>70% UNKNOWN)**: High rate expected. These questions are adversarially designed to be unanswerable given the context. Success means the model learns to recognize semantic impossibility, not just surface-level gibberish.
+
+- **Synthetic gibberish (>90% UNKNOWN)**: Highest rate. This is the explicit training target - the model should nearly always abstain on obvious nonsense.
+
+- **Domain shift datasets (20-40% UNKNOWN)**: Moderate rate expected. Medical/legal/code content represents real OOD data that isn't nonsense but falls outside training distribution. The model should show appropriate caution without over-abstaining.
+
+This gradient reflects different types of distributional shift: from in-distribution (confident answering) → format shift (slight caution) → semantic impossibility (high abstention) → obvious nonsense (near-complete abstention) → domain shift (moderate caution).
 
 ---
 
