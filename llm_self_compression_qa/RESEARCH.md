@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This literature review examines existing work in semantic compression, prompt compression, and question-answering evaluation methods to contextualize our research on **LLM Self-Compression for Downstream Question Answering**.
+This literature review examines existing work in semantic compression, prompt compression, and question-answering evaluation methods to contextualize our research on **LLM Self-Compression for Downstream Question Answering**. The review covers 21 formally cited papers across multiple research areas, plus additional recent work discussed in context.
 
 ### Key Finding: **This exact experimental protocol appears to be novel.**
 

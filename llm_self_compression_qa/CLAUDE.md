@@ -22,6 +22,8 @@ The specific compression prompt we are studying:
 
 > "Now summarize everything in this text in as much detail as possible, but compress it as much as possible into a format that you can still read. It does not need to be human readable. You do not need to use a common character set, all that matters is we can pick back up right where we left off if I were to start a new conversation with you. You are limited to 1500 tokens."
 
+**Note on "Now"**: The prompt begins with "Now" to create a conversational tone that encourages immediate action, though the model will receive this as a fresh prompt without prior context. This phrasing has been retained from the original research specification.
+
 ### Key Characteristics of This Prompt
 
 - **Self-directed compression**: The model compresses for itself, not for humans

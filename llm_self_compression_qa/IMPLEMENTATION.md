@@ -156,9 +156,10 @@ llm_self_compression_qa/
 - Verify model access
 
 **Tasks**:
-1. Initialize project with `uv`
+1. Initialize project with `uv` or pip
 2. Create virtual environment
-3. Install core dependencies:
+3. Create `pyproject.toml` for package installation
+4. Install core dependencies:
    - `openai` for GPT models
    - `anthropic` for Claude models
    - `transformers` for HF models (optional)
@@ -170,14 +171,50 @@ llm_self_compression_qa/
    - `pytest` for testing
    - `pyyaml` for configuration
 4. Set up `.env` file with API keys
-5. Test API connectivity
+5. Install package in development mode: `pip install -e .`
+6. Test API connectivity
+
+**Example pyproject.toml**:
+```toml
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-self-compression-qa"
+version = "0.1.0"
+description = "LLM Self-Compression for Question Answering Research"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=1.0.0",
+    "tiktoken",
+    "sentence-transformers",
+    "datasets",
+    "pandas",
+    "numpy",
+    "matplotlib",
+    "seaborn",
+    "scipy",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "black",
+    "flake8",
+]
+```
 
 **Deliverables**:
 - Working Python environment
-- Configuration files
+- Configuration files (pyproject.toml, .env)
 - README.md with setup instructions
 
 **Acceptance Criteria**:
+- Can install package with `pip install -e .`
+- Can import from src package
 - Can load a model and generate a completion
 - Can count tokens accurately
 - All tests pass
@@ -220,18 +257,19 @@ class BaseLLM(ABC):
 **1.2: OpenAI Implementation**
 ```python
 # src/models/openai_model.py
-import openai
+from openai import OpenAI
 import tiktoken
 from .base import BaseLLM
 
 class OpenAIModel(BaseLLM):
-    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.0):
+    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.0, api_key=None):
+        self.client = OpenAI(api_key=api_key)  # Uses OPENAI_API_KEY env var if api_key=None
         self.model_name = model_name
         self.temperature = temperature
         self.encoding = tiktoken.encoding_for_model(model_name)
 
     def generate(self, prompt: str, **kwargs) -> str:
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
             temperature=self.temperature,
@@ -272,9 +310,13 @@ class TokenCounter:
         if compliant:
             return text, token_count, True
 
-        # Truncate to limit
-        # TODO: Implement proper truncation
-        return text[:limit*4], limit, False  # Rough approximation
+        # Truncate to limit using proper token-based truncation
+        encoding = self.model.encoding
+        tokens = encoding.encode(text)
+        truncated_tokens = tokens[:limit]
+        truncated_text = encoding.decode(truncated_tokens)
+
+        return truncated_text, limit, False
 ```
 
 **1.4: Logging Setup**
@@ -436,6 +478,19 @@ Text to compress:
 
 Compressed representation:
 """
+
+# Prompt registry for configuration files
+PROMPT_REGISTRY = {
+    "SELF_COMPRESSION_PROMPT": SELF_COMPRESSION_PROMPT,
+    "HUMAN_SUMMARY_PROMPT": HUMAN_SUMMARY_PROMPT,
+    "ENHANCED_SELF_COMPRESSION_PROMPT": ENHANCED_SELF_COMPRESSION_PROMPT,
+}
+
+def get_prompt(name: str) -> str:
+    """Get prompt template by name."""
+    if name not in PROMPT_REGISTRY:
+        raise ValueError(f"Unknown prompt: {name}. Available: {list(PROMPT_REGISTRY.keys())}")
+    return PROMPT_REGISTRY[name]
 ```
 
 **3.2: Compressor**
@@ -443,11 +498,12 @@ Compressed representation:
 # src/compression/compressor.py
 from typing import Dict, Any
 import logging
+from .token_counter import TokenCounter
 
 class Compressor:
-    def __init__(self, model, token_counter):
+    def __init__(self, model):
         self.model = model
-        self.token_counter = token_counter
+        self.token_counter = TokenCounter(model)
         self.logger = logging.getLogger(__name__)
 
     def compress(
@@ -761,7 +817,7 @@ class MetricsCalculator:
 **6.1: Full-Context Baseline**
 ```python
 # src/baselines/full_context.py
-from src.evaluation.answerer import Answerer
+from ..evaluation.answerer import Answerer
 
 class FullContextBaseline:
     def __init__(self, model):
@@ -775,12 +831,12 @@ class FullContextBaseline:
 **6.2: Human Summary Baseline**
 ```python
 # src/baselines/human_summary.py
-from src.compression.compressor import Compressor
-from src.compression.prompts import HUMAN_SUMMARY_PROMPT
+from ..compression.compressor import Compressor
+from ..compression.prompts import HUMAN_SUMMARY_PROMPT
 
 class HumanSummaryBaseline:
-    def __init__(self, model, token_counter):
-        self.compressor = Compressor(model, token_counter)
+    def __init__(self, model):
+        self.compressor = Compressor(model)
 
     def compress(self, document: str, token_limit: int = 1500):
         """Create human-readable summary."""
@@ -795,13 +851,14 @@ class HumanSummaryBaseline:
 ```python
 # src/baselines/random_sample.py
 import random
+from typing import Dict, Any
 
 class RandomSampleBaseline:
     def __init__(self, token_counter, seed=42):
         self.token_counter = token_counter
         self.seed = seed
 
-    def compress(self, document: str, token_limit: int = 1500) -> Dict:
+    def compress(self, document: str, token_limit: int = 1500) -> Dict[str, Any]:
         """Randomly sample tokens from document."""
         random.seed(self.seed)
 
@@ -847,13 +904,16 @@ class RandomSampleBaseline:
 **7.1: Pilot Experiment Script**
 ```python
 # experiments/pilot/run_pilot.py
-import sys
+# NOTE: Install package in development mode first: pip install -e .
+# This avoids sys.path manipulation
+
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent.parent))
+import pandas as pd
 
 from src.models.openai_model import OpenAIModel
 from src.data.loader import DatasetLoader
 from src.compression.compressor import Compressor
+from src.compression.prompts import SELF_COMPRESSION_PROMPT
 from src.supervision.question_generator import QuestionGenerator
 from src.evaluation.answerer import Answerer
 from src.evaluation.metrics import MetricsCalculator
@@ -866,7 +926,7 @@ def run_pilot():
     documents = DatasetLoader.load_cnn_dailymail(num_samples=10)
 
     # Initialize components
-    compressor = Compressor(model, model)
+    compressor = Compressor(model)
     qa_generator = QuestionGenerator(model)
     answerer = Answerer(model)
     metrics_calc = MetricsCalculator()
@@ -914,9 +974,13 @@ def run_pilot():
             })
 
     # Save results
-    import pandas as pd
     df = pd.DataFrame(results)
-    df.to_csv("results/pilot/pilot_results.csv", index=False)
+
+    # Create results directory if it doesn't exist
+    results_dir = Path("results/pilot")
+    results_dir.mkdir(parents=True, exist_ok=True)
+
+    df.to_csv(results_dir / "pilot_results.csv", index=False)
 
     print("\nPilot complete!")
     print(f"Processed {len(documents)} documents, {len(results)} QA pairs")
