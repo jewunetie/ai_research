@@ -49,7 +49,7 @@ The MECE principle is well-known in business consulting (developed by Barbara Mi
   - Forces models to answer simpler subquestions in separate contexts
   - Increases faithfulness of model-generated reasoning
 
-- **LM2: A Simple Society of Language Models** (arXiv:2404.02255, May 2024)
+- **LM2: A Simple Society of Language Models** (arXiv:2404.02255, April 2024)
   - Modularizes decomposition, solution, and verification into three LMs
   - Shows decomposition increases robustness
 
@@ -398,10 +398,102 @@ Based on Papers with Code and ArXiv survey:
 
 ---
 
+## 11. Recommended Models for MECE Research
+
+### **Primary Recommendation: QwQ-32B-Preview** 🌟
+
+**Why QwQ is Ideal for MECE Research:**
+- **Purpose**: QwQ = "Qwen with Questions" - explicitly designed for reasoning
+- **Self-Verification**: Model fact-checks itself (aligns with MECE validation)
+- **Explicit Reasoning**: Generates step-by-step chains similar to OpenAI's o1
+- **Strong Performance**:
+  - AIME 2024: 50%+ (mathematical reasoning)
+  - GPQA Diamond: High science reasoning scores
+  - LiveCodeBench: Strong coding proficiency
+- **Open Source**: Apache 2.0 license, available on HuggingFace
+- **Specifications**: 32.5B parameters, 32K context window
+- **Release**: November 2024, updated March 2025
+- **HuggingFace**: `Qwen/QwQ-32B-Preview`
+
+**Perfect for MECE because**:
+1. Already generates long reasoning chains (easy to extract steps)
+2. Built-in self-verification relates to checking ME/CE properties
+3. Excels at math and logic (our target domains)
+4. Open architecture enables full experimental control
+
+### **Alternative/Complementary Models:**
+
+#### **Qwen2.5-Math-7B** (Math-Specialized)
+- Trained on 5.5T tokens of math/code data
+- Supports CoT, Program-of-Thought (PoT), Tool-Integrated Reasoning (TIR)
+- 90%+ code-based reasoning after RLVR training
+- Smaller and faster than QwQ-32B
+- **Use case**: Math-focused MECE evaluation
+
+#### **Qwen3-30B-A3B** (Mixture-of-Experts)
+- **Total parameters**: 30B, **Active parameters**: 3B (90% reduction!)
+- Outperforms QwQ-32B with 10x fewer active parameters
+- Exceptional efficiency for production use
+- **Use case**: Large-scale evaluation, efficiency testing
+
+#### **Qwen3 Dense Models** (Scaling Studies)
+- **Qwen3-8B**: Balanced size, good reasoning
+- **Qwen3-4B**: Rivals Qwen2 despite smaller size
+- **Qwen3-1.7B, Qwen3-0.6B**: Ultra-small for ablations
+- **Use case**: Test MECE benefits across model scales
+
+#### **Qwen3-32B or Qwen3-235B-A22B** (Coverage Oracle)
+- Use as separate "coverage oracle" model
+- Different from generation model to reduce bias
+- Strong general capabilities for identifying missing cases
+- **Use case**: Measuring collective exhaustiveness
+
+### **Key Features of Qwen3 Family** (Released April 2025)
+- **Training**: 36 trillion tokens (2x Qwen2.5)
+- **Languages**: 119 languages and dialects
+- **Context**: Up to 256K tokens
+- **Modes**: Thinking Mode (step-by-step) + Non-Thinking Mode (fast)
+- **License**: Apache 2.0 (fully open source)
+- **Availability**: HuggingFace and ModelScope
+
+### **Computational Requirements:**
+
+**QwQ-32B-Preview (Local)**:
+- GPU: 1x A100 (40GB) or 2x A6000 (48GB)
+- RAM: 128GB+ recommended
+- Time: ~4-8 hours for 100 problems
+
+**Qwen3-30B-A3B (MoE, Local)**:
+- GPU: 1x A6000 (48GB) sufficient
+- 10x faster than dense 32B
+- Time: ~30-60 minutes for 100 problems
+
+**API/Cloud Options**:
+- HuggingFace Inference API: ~$0.10-0.50 per 100 problems
+- Alibaba Cloud Model Studio: Similar pricing
+- **Verdict**: Very affordable for research
+
+### **Experimental Design with Qwen Models:**
+
+1. **Phase 1**: QwQ-32B for MECE-prompted reasoning
+2. **Phase 2**: Qwen3-32B as coverage oracle (different model family)
+3. **Phase 3**: Qwen3 dense models for scaling analysis (0.6B → 32B)
+4. **Phase 4**: Qwen3-30B-A3B for efficiency comparison (dense vs sparse)
+5. **Bonus**: Compare Thinking Mode vs Non-Thinking Mode for MECE
+
+### **Important Research Note:**
+
+Recent work (ACL 2025) shows "Small Models Struggle to Learn from Strong Reasoners" - long CoT from models like QwQ-32B may be harder for small models to learn from.
+
+**Implication**: MECE-prompted responses may be longer (more steps). This creates an interesting research question: **Does MECE structure help smaller models learn better than unstructured long CoT?**
+
+---
+
 ## Next Steps
 
 1. Define precise computational metrics for ME and CE
 2. Design prompting strategies that elicit MECE reasoning
 3. Select or create evaluation datasets where MECE is verifiable
-4. Implement measurement framework
-5. Conduct systematic comparison with baselines
+4. Implement measurement framework with QwQ-32B-Preview as primary model
+5. Conduct systematic comparison with baselines (standard CoT, Self-Consistency)
+6. Test across Qwen model family to evaluate scaling properties
