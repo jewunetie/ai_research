@@ -25,7 +25,7 @@ A **comprehensive simulation framework** that:
 1. Implements multiple mechanism designs from the literature in a unified framework
 2. Tests mechanisms against diverse agent types (truthful, lazy, strategic, adversarial, uncertain)
 3. Provides comparative evaluation across scenarios with varying task difficulty, agent populations, and payment budgets
-4. Bridges theory and practice by simulating realistic agent behaviors beyond perfect rationality
+4. Bridges theory and practice by simulating agent behaviors ranging from perfect rationality (initial implementation) to bounded rationality and learning dynamics (future extensions)
 
 ---
 
@@ -224,7 +224,26 @@ These are statistical models for aggregating labels from multiple annotators, of
 **Variants**:
 - **Steps-GLAD**: Combines steps model with GLAD
 
-#### 2.4.4 Other Aggregation Methods
+#### 2.4.4 Comprehensive Benchmark Study
+
+**Key Paper**: Zheng, Y., Li, G., Li, Y., Shan, C., & Cheng, R. (2017). "Truth Inference in Crowdsourcing: Is the Problem Solved?" *VLDB*, 10(5), 541-552.
+
+This landmark study evaluated **17 truth inference algorithms** on 5 real crowdsourcing datasets, including:
+- Majority Voting
+- Dawid-Skene and variants (BCC, CBCC)
+- GLAD and variants
+- Minimax, CATD, KOS, and others
+
+**Critical Findings**:
+1. **No algorithm consistently outperforms others** across different datasets
+2. **Confusion matrix methods** (Dawid-Skene, BCC) generally outperform simpler probability methods
+3. **GLAD does not show improvements** over simpler methods despite modeling task difficulty
+4. Methods often take significant time to converge (Dawid-Skene: >15 min for 100×100)
+5. **CRITICAL GAP**: Study included NO peer prediction mechanisms (BTS, RBTS, Peer Truth Serum)
+
+This benchmark focuses exclusively on **truth inference/aggregation** methods that assume annotators report their observations. It does NOT evaluate **incentive mechanisms** that influence what annotators choose to report.
+
+#### 2.4.5 Other Aggregation Methods
 
 - **Expectation Maximization (EM)**: General framework for joint inference of labels and quality
 - **Post-Expertise Estimation**: Estimate worker quality after data collection
@@ -268,6 +287,26 @@ These are statistical models for aggregating labels from multiple annotators, of
 ## 3. Key Mechanisms for Implementation
 
 Based on the literature, these mechanisms are most promising for simulation:
+
+### Important Distinction: Two Categories of Mechanisms
+
+The crowdsourcing literature contains two fundamentally different approaches:
+
+**Category 1: Truth Inference / Aggregation Methods**
+- **Assumption**: Annotators report their observations (possibly with errors)
+- **Goal**: Infer true labels from noisy reports
+- **Examples**: Majority Voting, Dawid-Skene, GLAD
+- **Payment**: Fixed or quality-based (estimated post-hoc)
+- **Data Required**: Just the reports themselves
+
+**Category 2: Peer Prediction / Incentive Mechanisms**
+- **Assumption**: Annotators are strategic and may misreport
+- **Goal**: Design payments that make truthful reporting optimal
+- **Examples**: BTS, RBTS, Peer Truth Serum
+- **Payment**: Mechanism-determined (often comparing reports with peers)
+- **Data Required**: Reports + predictions about others' reports (for some mechanisms)
+
+**Critical Gap**: These two categories have been studied separately and never comprehensively compared. Our simulation bridges this divide by implementing both categories in a unified framework where we can test them under identical conditions with strategic agents.
 
 ### 3.1 Baseline Mechanisms
 
@@ -380,6 +419,33 @@ Agents maximize utility: `U = Payment - Cost`
 4. **Prior Beliefs**: Beliefs about task distribution and other agents
 5. **Sophistication**: Understanding of mechanism design
 
+### 5.5 Agent Belief Model (for Strategic Reasoning)
+
+In game-theoretic simulations, agents need beliefs to reason strategically:
+
+**What Agents Know**:
+- Their own type (ability, cost, preferences)
+- The mechanism design (payment rules)
+- Prior distribution over task labels (e.g., P(label=positive) = 0.6)
+- Prior distribution over other agent types (e.g., 70% truthful, 20% lazy, 10% adversarial)
+
+**What Agents Don't Know**:
+- The specific realization of other agents' types (is agent j truthful or lazy?)
+- Other agents' private signals/observations
+- The true label until after reporting (ground truth is revealed post-hoc for evaluation)
+
+**Strategic Reasoning**:
+- **Truthful agents**: Report their observation regardless of mechanism
+- **Lazy agents**: Report random or most common label to minimize effort
+- **Strategic agents**: Compute expected payment under different reports, accounting for distribution of other agent types and their likely reports
+- **Adversarial agents**: Attempt to maximize payment while minimizing overall system quality
+
+**Note**: Computing exact Bayes-Nash equilibria for strategic agents can be computationally intensive. Initial implementation may use:
+1. Best-response to uniform prior over others' strategies
+2. Iterative best-response dynamics
+3. Simplified strategy spaces
+4. Pre-computed equilibrium strategies for common scenarios
+
 ---
 
 ## 6. Evaluation Metrics
@@ -427,9 +493,15 @@ Agents maximize utility: `U = Payment - Cost`
 
 ### 7.3 Mechanism Comparison
 
-**Gap**: Few studies compare multiple mechanisms in identical conditions
+**Gap**: Few studies compare multiple mechanisms in identical conditions. More critically, **no study compares peer prediction mechanisms (BTS, RBTS) with truth inference methods (Dawid-Skene, GLAD)**.
 
-**Opportunity**: Unified simulation framework for head-to-head comparison
+**Why This Gap Exists**:
+- Peer prediction mechanisms require eliciting **predictions** about others' reports (additional data collection)
+- Truth inference methods only need the **reports themselves**
+- Existing benchmark datasets (e.g., Zheng et al. 2017) contain only reports, not predictions
+- These are traditionally studied by different research communities (mechanism design vs. machine learning)
+
+**Opportunity**: Unified simulation framework for head-to-head comparison where we can control exactly what data is elicited from agents
 
 ### 7.4 Bounded Rationality
 
@@ -560,19 +632,29 @@ Agents maximize utility: `U = Payment - Cost`
 
 7. **Kong, Y., et al. (2021)**. "Dominantly Truthful Multi-task Peer Prediction with a Constant Number of Tasks." *Journal of the ACM*.
 
+### Comprehensive Benchmarks
+
+8. **Zheng, Y., Li, G., Li, Y., Shan, C., & Cheng, R. (2017)**. "Truth Inference in Crowdsourcing: Is the Problem Solved?" *VLDB*, 10(5), 541-552.
+
 ### Simulation and Agent-Based Models
 
-8. **An agent-based model for crowdsourcing systems** (2014). *Winter Simulation Conference*.
+9. **An agent-based model for crowdsourcing systems** (2014). *Winter Simulation Conference*.
 
-9. **CrowdSim: A Hybrid Simulation Model for Failure Prediction** (2021). arXiv:2103.09856.
+10. **CrowdSim: A Hybrid Simulation Model for Failure Prediction** (2021). arXiv:2103.09856.
 
 ### Recent Work (2023-2024)
 
-10. **Multitask Peer Prediction With Task-dependent Strategies** (2023). *ACM Web Conference*.
+11. **Multitask Peer Prediction With Task-dependent Strategies** (2023). *ACM Web Conference*.
 
-11. **Peer Neighborhood Mechanisms: A Framework for Mechanism Generalization** (2024). *AAAI*.
+12. **Peer Neighborhood Mechanisms: A Framework for Mechanism Generalization** (2024). *AAAI*.
 
-12. **Peer Prediction for Peer Review: Designing a Marketplace for Ideas** (2023). arXiv:2303.16855.
+13. **Peer Prediction for Peer Review: Designing a Marketplace for Ideas** (2023). arXiv:2303.16855.
+
+### Empirical Evaluation Papers
+
+14. **Gao, X.A., Mao, A., Chen, Y., & Adams, R.P. (2014)**. "Trick or Treat: Putting Peer Prediction to the Test." *ACM Conference on Economics and Computation*.
+
+15. **Paun, S., Carpenter, B., Chamberlain, J., Hovy, D., Kruschwitz, U., & Poesio, M. (2018)**. "Comparing Bayesian Models of Annotation." *Transactions of the Association for Computational Linguistics*, 6, 571-585.
 
 ---
 

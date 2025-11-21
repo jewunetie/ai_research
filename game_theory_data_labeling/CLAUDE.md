@@ -29,12 +29,18 @@ Each agent type represents a different annotator behavior pattern. We simulate m
 
 ## Technology Stack
 
+### Core Requirements
 - **Python**: Primary implementation language
 - **uv**: Package and project management
-- **PyTorch**: For agent modeling, neural network-based strategies (if needed)
-- **Hugging Face**: For pre-trained models if we simulate labeling on real text/image data
-- **NumPy/SciPy**: Numerical computations, optimization
+- **NumPy/SciPy**: Numerical computations, optimization, probability distributions
 - **Matplotlib/Seaborn**: Visualization of results
+
+### Optional Extensions
+- **PyTorch**: Only if implementing learning agents or neural network-based strategies
+- **Hugging Face**: Only if extending to real text/image data labeling tasks
+- **NetworkX**: If modeling agent interaction networks or collusion
+
+**Note**: Core simulation uses simple utility-based agents with explicit strategies (truthful, lazy, strategic, adversarial). Advanced machine learning libraries are not required for the primary research goals.
 
 ## Scope
 
