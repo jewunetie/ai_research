@@ -9,14 +9,24 @@ Gibberish data: Predict <UNKNOWN> token
 import argparse
 import json
 import random
+import sys
 from pathlib import Path
 from typing import List, Dict
+
+# Add src to path for direct script execution
+if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).parent))
 
 import yaml
 from tqdm import tqdm
 
-from generate_gibberish import GibberishGenerator, GibberishConfig
-from download_fineweb import load_fineweb_texts
+try:
+    from .generate_gibberish import GibberishGenerator, GibberishConfig
+    from .download_fineweb import load_fineweb_texts
+except ImportError:
+    # Fallback for direct script execution
+    from generate_gibberish import GibberishGenerator, GibberishConfig
+    from download_fineweb import load_fineweb_texts
 
 
 def prepare_training_data(

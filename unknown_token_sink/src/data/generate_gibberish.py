@@ -330,7 +330,14 @@ class GibberishGenerator:
         # Generate corrupted
         if source_texts_for_corruption:
             num_per_rate = counts['corrupted'] // len(self.config.corruption_rates)
-            corr_examples = self.corrupted.generate(source_texts_for_corruption, num_per_rate)
+            remainder = counts['corrupted'] % len(self.config.corruption_rates)
+            # Generate base amount for each rate, plus one extra for first 'remainder' rates
+            corr_examples = self.corrupted.generate(
+                source_texts_for_corruption,
+                num_per_rate + (1 if remainder > 0 else 0)
+            )
+            # Only keep exactly counts['corrupted'] examples to avoid over-generation
+            corr_examples = corr_examples[:counts['corrupted']]
             examples.extend([{'text': ex['text'], 'type': 'corrupted',
                             'corruption_rate': ex['corruption_rate']}
                            for ex in corr_examples])
