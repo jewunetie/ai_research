@@ -51,25 +51,33 @@ def create_model(config: Config, device: torch.device):
 
     if arch == 'mlp':
         # Pure backprop baseline
+        # Construct layer_dims from config
+        input_dim = config.get('model.input_dim')
+        hidden_dims = config.get('model.hidden_dims')
+        num_classes = config.get('model.num_classes')
+        layer_dims = [input_dim] + hidden_dims + [num_classes]
+
         model = MLP(
-            input_dim=config.get('model.input_dim'),
-            hidden_dims=config.get('model.hidden_dims'),
-            num_classes=config.get('model.num_classes'),
+            layer_dims=layer_dims,
             activation=config.get('model.activation', 'relu'),
             dropout=config.get('model.dropout', 0.0),
             batch_norm=config.get('model.batch_norm', False)
         ).to(device)
-        print(f"Created MLP with {len(config.get('model.hidden_dims'))} hidden layers")
+        print(f"Created MLP with {len(hidden_dims)} hidden layers")
 
     elif arch == 'ff_network':
         # Pure FF baseline
+        # Construct layer_dims from config
+        input_dim = config.get('model.input_dim')
+        hidden_dims = config.get('model.hidden_dims')
+        layer_dims = [input_dim] + hidden_dims
+
         model = FFNetwork(
-            input_dim=config.get('model.input_dim'),
-            hidden_dims=config.get('model.hidden_dims'),
+            layer_dims=layer_dims,
             threshold=config.get('model.ff_threshold', 2.0),
-            normalize=True
+            normalize_between_layers=True
         ).to(device)
-        print(f"Created FFNetwork with {len(config.get('model.hidden_dims'))} FF layers")
+        print(f"Created FFNetwork with {len(hidden_dims)} FF layers")
 
     elif arch == 'hybrid_ff_bp':
         # Hybrid FF+BP model
@@ -111,7 +119,7 @@ def create_trainer(approach: str, model, device, config: Config):
             model=model,
             device=device,
             learning_rate=config.get('training.learning_rate'),
-            optimizer_name=config.get('training.optimizer', 'adam')
+            optimizer_type=config.get('training.optimizer', 'adam')
         )
         print(f"Initialized BPTrainer (lr={config.get('training.learning_rate')})")
 
