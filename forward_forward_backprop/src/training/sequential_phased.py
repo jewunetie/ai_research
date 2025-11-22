@@ -41,6 +41,30 @@ class SequentialPhasedTrainer:
         self.phase2a_history = None
         self.phase2b_history = None
 
+        # Basic validation
+        self._validate_model_and_config()
+
+    def _validate_model_and_config(self):
+        """Validate model structure and config."""
+        # Check model has required attributes
+        if not hasattr(self.model, 'ff_layers'):
+            raise ValueError("Model must have 'ff_layers' attribute (use HybridFFBPModel)")
+        if not hasattr(self.model, 'classifier'):
+            raise ValueError("Model must have 'classifier' attribute (use HybridFFBPModel)")
+
+        # Check config has required keys
+        if 'phase1' not in self.config and 'phase2a' not in self.config:
+            raise ValueError("Config must have at least 'phase1' or 'phase2a' settings")
+
+        # Warn if all phases are disabled
+        phase1_epochs = self.config.get('phase1', {}).get('epochs', 0)
+        phase2a_epochs = self.config.get('phase2a', {}).get('epochs', 0)
+        phase2b_enabled = self.config.get('phase2b', {}).get('enabled', False)
+        phase2b_epochs = self.config.get('phase2b', {}).get('epochs', 0)
+
+        if phase1_epochs == 0 and phase2a_epochs == 0 and (not phase2b_enabled or phase2b_epochs == 0):
+            print("WARNING: All training phases are disabled (all epochs = 0)")
+
     def phase1_ff_pretraining(self, train_loader, val_loader):
         """
         Phase 1: FF Pretraining (Unsupervised).
@@ -70,12 +94,15 @@ class SequentialPhasedTrainer:
         ).to(self.device)
 
         # Train with FF
+        # Infer num_classes from classifier output dimension
+        num_classes = self.model.classifier.out_features
+
         trainer = FFTrainer(
             model=ff_network,
             device=self.device,
             threshold=phase1_config.get('threshold', 2.0),
             negative_strategy=phase1_config.get('negative_strategy', 'random_label'),
-            num_classes=10,
+            num_classes=num_classes,
             learning_rate=phase1_config.get('learning_rate', 0.03)
         )
 

@@ -38,6 +38,10 @@ def generate_negative_augmented(
     """
     Generate negative samples with noise augmentation.
 
+    Note: This function works with both normalized and unnormalized images.
+    For normalized images (mean/std normalized), noise is added directly without clamping.
+    For unnormalized images in [0, 1], you may want to clamp the result.
+
     Args:
         images: Input images [batch_size, C, H, W]
         noise_std: Standard deviation of Gaussian noise
@@ -46,7 +50,8 @@ def generate_negative_augmented(
         negative_images: Images with added noise
     """
     noise = torch.randn_like(images) * noise_std
-    negative_images = torch.clamp(images + noise, 0, 1)
+    # Don't clamp - works for both normalized and unnormalized images
+    negative_images = images + noise
     return negative_images
 
 
@@ -138,23 +143,26 @@ def embed_label_in_image(
     """
     Embed one-hot label in top-left corner of images (Hinton's original approach).
 
+    The one-hot label is embedded in the first row, first num_classes pixels
+    of the first channel. For MNIST, this means pixels (0,0) through (0,9).
+
     Args:
         images: Input images [batch_size, C, H, W]
         labels: Labels [batch_size]
         num_classes: Number of classes
-        label_size: Size of label embedding region
+        label_size: Maximum size of label embedding region (usually == num_classes)
 
     Returns:
         images_with_labels: Images with embedded labels
     """
     images_with_labels = images.clone()
 
-    # Create one-hot labels
+    # Create one-hot labels [batch_size, num_classes]
     one_hot = F.one_hot(labels, num_classes=num_classes).float()
 
-    # Embed in top-left corner
-    for i in range(min(label_size, images.shape[2])):
-        if i < num_classes:
-            images_with_labels[:, 0, 0, i] = one_hot[:, i]
+    # Embed in top-left corner: first row, first num_classes columns, first channel
+    # Ensure we don't exceed image width
+    n_pixels = min(num_classes, images.shape[3])  # shape[3] is width
+    images_with_labels[:, 0, 0, :n_pixels] = one_hot[:, :n_pixels]
 
     return images_with_labels

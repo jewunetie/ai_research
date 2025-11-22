@@ -55,7 +55,8 @@ class DetachedInterfaceTrainer:
 
         self.threshold = ff_config.get('threshold', 2.0)
         self.negative_strategy = ff_config.get('negative_strategy', 'random_label')
-        self.num_classes = 10
+        # Infer num_classes from classifier output dimension
+        self.num_classes = model.classifier.out_features
 
         self.train_ff_losses = []
         self.train_bp_losses = []
@@ -63,9 +64,28 @@ class DetachedInterfaceTrainer:
         self.val_losses = []
         self.val_accs = []
 
+        # Basic validation
+        self._validate_model_and_config()
+
+    def _validate_model_and_config(self):
+        """Validate model structure and config."""
+        # Check model has required attributes
+        if not hasattr(self.model, 'ff_layers'):
+            raise ValueError("Model must have 'ff_layers' attribute (use HybridFFBPModel)")
+        if not hasattr(self.model, 'classifier'):
+            raise ValueError("Model must have 'classifier' attribute (use HybridFFBPModel)")
+
+        # Check config has required keys
+        if 'ff_config' not in self.config or 'bp_config' not in self.config:
+            raise ValueError("Config must have 'ff_config' and 'bp_config' keys")
+
     def train_epoch(self, unsup_loader, sup_loader, epoch: int):
         """
         Train for one epoch with simultaneous FF and BP updates.
+
+        Note: If unsup_loader and sup_loader have different lengths, training
+        stops when the shorter one is exhausted. Ensure both loaders use the
+        same dataset or accept that some data may be unused each epoch.
 
         Args:
             unsup_loader: Unsupervised dataloader (for FF training)
@@ -133,8 +153,9 @@ class DetachedInterfaceTrainer:
             images_sup = images_sup.view(images_sup.size(0), -1)
 
             # Forward through FF layers (DETACHED!)
+            # Note: torch.no_grad() prevents gradient tracking, so .detach() is redundant
             with torch.no_grad():
-                h_detached = self.model.forward_ff(images_sup, normalize=True).detach()
+                h_detached = self.model.forward_ff(images_sup, normalize=True)
 
             # Forward through classifier
             logits = self.model.classifier(h_detached)
