@@ -1,0 +1,90 @@
+# Evaluation Configuration
+evaluation:
+  # Generation parameters for evaluation
+  max_new_tokens: 50
+  do_sample: false  # Greedy decoding
+  num_beams: 1
+  temperature: 1.0
+
+  # Batch sizes
+  batch_size: 32
+
+  # Metrics to compute
+  metrics:
+    - "unknown_rate"
+    - "perplexity"
+    - "accuracy"
+    - "f1"
+    - "hallucination_rate"
+
+# Target metrics (for success criteria)
+targets:
+  in_distribution:
+    unknown_rate_max: 0.05  # <5%
+    perplexity_degradation_max: 0.10  # Within 10% of baseline
+
+  synthetic_gibberish:
+    unknown_rate_min: 0.90  # >90%
+    by_type:
+      repetitive: 0.90
+      random: 0.90
+      semantic_null: 0.90
+      corrupted: 0.90
+
+  squad2:
+    answerable_unknown_rate_max: 0.10  # <10%
+    unanswerable_unknown_rate_min: 0.70  # >70%
+
+  domain_shift:
+    unknown_rate_min: 0.20  # 20-40% range
+    unknown_rate_max: 0.40
+
+  hallucination:
+    reduction_min: 0.05  # >5% reduction
+
+# Datasets for evaluation
+datasets:
+  in_distribution:
+    name: "fineweb-edu"
+    split: "test"
+    size: 5000
+
+  synthetic_gibberish:
+    path: "data/test/gibberish_synthetic.jsonl"
+    size: 1000
+
+  squad2:
+    name: "squad_v2"
+    split: "validation"
+
+  pubmedqa:
+    name: "pubmed_qa"
+    config: "pqa_labeled"
+    split: "test"
+    size: 1000
+
+  truthfulqa:
+    name: "truthful_qa"
+    config: "generation"
+    split: "validation"
+
+# Baseline comparisons
+baselines:
+  - name: "unmodified"
+    description: "Unmodified Gemma 3 270M"
+    model: "google/gemma-3-270m"
+
+  - name: "confidence_threshold"
+    description: "Confidence thresholding baseline"
+    thresholds: [0.5, 0.6, 0.7, 0.8, 0.9]
+
+  - name: "prompt_based"
+    description: "Prompt-based abstention"
+    prompt: "Answer the question. If you don't know or are unsure, say 'I don't know'."
+
+# Output paths
+output:
+  results_dir: "./results"
+  save_predictions: true
+  save_metrics: true
+  save_analysis: true

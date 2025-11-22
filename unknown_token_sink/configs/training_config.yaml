@@ -1,0 +1,94 @@
+# Training Configuration
+training:
+  output_dir: "./output/unknown_token_sink"
+  overwrite_output_dir: true
+
+  # Training hyperparameters
+  num_train_epochs: 3
+  per_device_train_batch_size: 16
+  per_device_eval_batch_size: 32
+  gradient_accumulation_steps: 2  # Effective batch size: 32
+
+  # Learning rate schedule
+  learning_rate: 5.0e-5
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.1
+
+  # Regularization
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+
+  # Evaluation and saving
+  evaluation_strategy: "steps"
+  eval_steps: 500
+  save_strategy: "steps"
+  save_steps: 500
+  save_total_limit: 3
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+
+  # Logging
+  logging_dir: "./logs"
+  logging_steps: 100
+  logging_first_step: true
+  report_to: ["tensorboard"]
+
+  # Optimization
+  fp16: true  # Mixed precision training
+  dataloader_num_workers: 4
+  dataloader_pin_memory: true
+
+  # Reproducibility
+  seed: 42
+  data_seed: 42
+
+# Data Configuration
+data:
+  # Dataset sizes
+  real_data_size: 90000  # FineWeb-Edu training examples
+  real_data_val_size: 10000  # FineWeb-Edu validation examples
+  real_data_test_size: 5000  # FineWeb-Edu test examples
+
+  gibberish_data_size: 10000  # Total gibberish examples
+  gibberish_ratio: 0.10  # 10% of training data (initial)
+
+  # Data processing
+  max_length: 512
+  dataset_name: "HuggingFaceFW/fineweb-edu"
+  dataset_config: "sample-10BT"
+
+  # Gibberish generation parameters
+  gibberish:
+    seed: 42
+    val_seed: 123
+    test_seed: 456
+
+    # Type distribution (must sum to 1.0)
+    type_distribution:
+      repetitive: 0.25
+      random: 0.25
+      semantic_null: 0.25
+      corrupted: 0.25
+
+    # Type-specific parameters
+    repetitive:
+      min_repetitions: 5
+      max_repetitions: 20
+
+    random:
+      min_length: 10
+      max_length: 50
+
+    semantic_null:
+      num_templates: 15
+
+    corrupted:
+      rates: [0.10, 0.30, 0.50, 0.70]
+      rate_distribution: [0.20, 0.30, 0.30, 0.20]
+      min_source_length: 20
+      max_source_length: 100
+
+# Loss weighting (optional, for tuning)
+loss:
+  real_weight: 1.0
+  gibberish_weight: 1.0  # Adjust to 0.3-0.5 if over-abstention occurs

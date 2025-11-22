@@ -1,0 +1,19 @@
+# Model Configuration
+model:
+  name: "google/gemma-3-270m"  # Primary model choice
+  backup_name: "HuggingFaceTB/SmolLM-360M"  # Backup if Gemma unavailable
+  max_length: 512
+  unknown_token: "<UNKNOWN>"
+  torch_dtype: "float16"  # Use FP16 for memory efficiency
+
+tokenizer:
+  padding_side: "right"
+  truncation: true
+  add_prefix_space: false
+
+# Model-specific settings
+generation:
+  max_new_tokens: 50
+  do_sample: false  # Greedy decoding for evaluation
+  temperature: 1.0
+  top_p: 1.0
