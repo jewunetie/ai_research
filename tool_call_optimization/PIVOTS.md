@@ -1,5 +1,93 @@
 # Project Pivot Options: Deep Research Analysis
 
+---
+
+## 🎯 DECISION: Tool Call Pattern Optimization (Option 2A)
+
+**Status**: ✅ **SELECTED AND PROCEEDING**
+
+**Date**: 2025-11-22
+
+### Why We Chose This Direction
+
+After extensive research across 11 potential pivot options, we selected **Tool Call Pattern Optimization** (Option 2A from the Gap-Focused Novelty category) as our implementation focus.
+
+### Rationale
+
+**1. Underexplored Gap with High Impact**
+- Extensive research exists on prompt optimization for text generation
+- Minimal work on optimizing tool calling patterns in agentic systems
+- As AI agents become more prevalent, effective tool orchestration is critical
+- Clear opportunity for novel contribution
+
+**2. Strong Technical Foundation**
+- Arize-ai prompt-learning provides proven methodology (natural language feedback loops)
+- Can adapt meta-prompting approach to tool usage patterns
+- Recent work (AgentFlow, "Less is More") validates that tool calling can be optimized
+- Execution traces provide rich training signal
+
+**3. Practical Value**
+- Directly applicable to emerging agentic systems (coding assistants, workflow automation)
+- Measurable outcomes (task success rate, tool efficiency)
+- Interpretable results (can see what strategies are discovered)
+- Transferable insights across domains
+
+**4. Feasible Scope**
+- Can start with synthetic benchmarks for rapid iteration
+- Progressive complexity: synthetic → ToolBench → SWE-Bench Lite
+- Laptop-friendly development (API-based or small local models)
+- 6-8 week timeline achievable
+
+**5. Novel Research Contribution**
+- First systematic application of meta-prompting to tool call patterns
+- Execution trace-based feedback for agent improvement
+- Interpretable optimization (vs. black-box RL)
+- Benchmark suite for tool-use optimization
+
+### Implementation Approach: RL-Inspired Meta-Prompting
+
+We're adapting the **Arize-ai optimizer_sdk** approach:
+
+```
+Workflow:
+1. Train/Test Split → Divide benchmark
+2. Execute → Agent attempts tasks with current system prompt
+3. Trace → Capture tool call sequences
+4. Evaluate → Score results (tests, metrics)
+5. Feedback → LLM explains why failures occurred
+6. Meta-Prompt → Propose improved system prompt
+7. Re-evaluate → Measure gains on test set
+8. Iterate → Repeat until convergence
+```
+
+**Key Innovation**: Optimize not just *what the LLM says*, but **how it uses tools** (selection, ordering, error recovery, validation).
+
+### What We're NOT Doing
+
+- ❌ General-purpose prompt optimization framework (DSPy already does this well)
+- ❌ Applied DSPy project (less novel, Option 1)
+- ❌ Prompt compression study (important but incremental, Option 4)
+- ❌ Domain-specific optimization (narrower scope, Option 6)
+
+### Success Metrics
+
+**Primary**: ≥15% improvement in task success rate on held-out test set
+
+**Secondary**:
+- Tool call efficiency (fewer unnecessary calls)
+- Error recovery rate
+- Interpretable learned patterns
+
+### Timeline
+
+- **Weeks 1-2**: Foundation (agent, synthetic tasks, execution tracing)
+- **Week 3**: Feedback loop (LLM-based critiques)
+- **Week 4**: Meta-prompting (automated optimization)
+- **Week 5**: Evaluation (benchmarks, baselines, ablations)
+- **Weeks 6-8**: Real benchmarks + analysis + documentation
+
+---
+
 ## Executive Summary
 
 After comprehensive research, the landscape of automated prompt optimization is mature with frameworks like DSPy, OPRO, PromptBreeder, and APE providing sophisticated solutions. **Building a competing general-purpose framework would be redundant**. However, there are multiple viable pivot directions that could contribute novel value:
