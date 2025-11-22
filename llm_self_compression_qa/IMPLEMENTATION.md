@@ -145,6 +145,42 @@ llm_self_compression_qa/
 
 ---
 
+## 🚨 CRITICAL: 2025 API Updates
+
+**This implementation uses the latest OpenAI APIs as of November 2025:**
+
+### Major Changes from Pre-2025 Implementations:
+
+1. **Responses API** (introduced March 2025):
+   - **NEW**: `client.responses.create(model=..., input=...)`
+   - **OLD**: `client.chat.completions.create(model=..., messages=...)`
+   - Responses API is the recommended approach for new projects
+   - Chat Completions API still supported but considered legacy
+
+2. **GPT-5 Series Models** (released August 2025):
+   - GPT-5: State-of-the-art base model
+   - GPT-5.1 Instant (`gpt-5.1-chat-latest`): Fast, adaptive reasoning
+   - GPT-5.1 Thinking (`gpt-5.1-thinking`): Deep reasoning
+   - Significant performance improvements over GPT-4
+
+3. **openai-python v2.0+** (2025):
+   - Breaking changes in v2.0.0
+   - MUST use `openai>=2.0.0` for Responses API
+   - ResponseFunctionToolCallOutputItem.output returns Array, not just string
+
+4. **New Parameters**:
+   - `reasoning_effort`: Control reasoning depth ("none", "minimal", "medium", "high")
+   - `seed`: Improved reproducibility support
+   - `input`: Replaces `messages` in Responses API
+
+### Why This Matters for Our Research:
+
+- **Better compression**: GPT-5.1 may create more sophisticated compression schemes
+- **Reproducibility**: `seed` parameter ensures consistent results across runs
+- **Adaptive reasoning**: Can enable deeper thinking when needed for complex compressions
+
+---
+
 ## Implementation Phases
 
 ### Phase 0: Setup (Estimated: 2-4 hours)
@@ -174,7 +210,7 @@ llm_self_compression_qa/
 5. Install package in development mode: `pip install -e .`
 6. Test API connectivity
 
-**Example pyproject.toml**:
+**Example pyproject.toml** (Updated for 2025):
 ```toml
 [build-system]
 requires = ["setuptools>=45", "wheel"]
@@ -184,11 +220,11 @@ build-backend = "setuptools.build_meta"
 name = "llm-self-compression-qa"
 version = "0.1.0"
 description = "LLM Self-Compression for Question Answering Research"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"  # Restrict due to tiktoken compatibility issues
 dependencies = [
-    "openai>=1.0.0",
-    "tiktoken",
-    "sentence-transformers",
+    "openai>=2.0.0",  # CRITICAL: v2.0+ required for Responses API (March 2025)
+    "tiktoken>=0.7.0",  # Latest version for GPT-5 models
+    "sentence-transformers>=3.0.0",
     "datasets",
     "pandas",
     "numpy",
@@ -206,6 +242,23 @@ dev = [
     "flake8",
 ]
 ```
+
+**IMPORTANT COMPATIBILITY NOTES:**
+
+1. **OpenAI Library Version**:
+   - **MUST use v2.0.0 or higher** for Responses API support
+   - v2.0.0 introduced in 2025 with breaking changes
+   - Chat Completions API still works but Responses API is recommended
+
+2. **Python Version**:
+   - **Recommended: Python 3.10 or 3.11**
+   - Python 3.12 has known tiktoken compatibility issues (as of Nov 2025)
+   - Test tiktoken installation before proceeding with 3.12+
+
+3. **tiktoken Encoding**:
+   - GPT-5/5.1 models use `o200k_base` encoding
+   - Older tiktoken versions may not recognize new model names
+   - Implementation includes fallback to `o200k_base`
 
 **Deliverables**:
 - Working Python environment
@@ -254,7 +307,7 @@ class BaseLLM(ABC):
         pass
 ```
 
-**1.2: OpenAI Implementation**
+**1.2: OpenAI Implementation (Updated for 2025 Responses API)**
 ```python
 # src/models/openai_model.py
 from openai import OpenAI
@@ -262,20 +315,64 @@ import tiktoken
 from .base import BaseLLM
 
 class OpenAIModel(BaseLLM):
-    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.0, api_key=None):
+    """
+    OpenAI model wrapper using the Responses API (introduced March 2025).
+
+    Recommended models (as of November 2025):
+    - gpt-5.1-chat-latest (GPT-5.1 Instant - fast, adaptive reasoning)
+    - gpt-5.1 or gpt-5.1-thinking (GPT-5.1 Thinking - deep reasoning)
+    - gpt-5 (base GPT-5 model)
+    - gpt-4o (GPT-4 optimized, fallback option)
+    """
+
+    def __init__(
+        self,
+        model_name="gpt-5.1-chat-latest",  # Updated default to GPT-5.1 Instant
+        temperature=0.0,
+        seed=42,  # For reproducibility
+        reasoning_effort="none",  # "none", "minimal", "medium", "high" for GPT-5.1
+        api_key=None
+    ):
         self.client = OpenAI(api_key=api_key)  # Uses OPENAI_API_KEY env var if api_key=None
         self.model_name = model_name
         self.temperature = temperature
-        self.encoding = tiktoken.encoding_for_model(model_name)
+        self.seed = seed
+        self.reasoning_effort = reasoning_effort
+
+        # Get encoding (may need fallback for newer models)
+        try:
+            self.encoding = tiktoken.encoding_for_model(model_name)
+        except KeyError:
+            # Fallback for new models not yet in tiktoken
+            self.encoding = tiktoken.get_encoding("o200k_base")  # GPT-4o/5 encoding
 
     def generate(self, prompt: str, **kwargs) -> str:
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=self.temperature,
-            **kwargs
-        )
-        return response.choices[0].message.content
+        """
+        Generate completion using the Responses API (March 2025+).
+
+        Note: Responses API uses 'input' parameter instead of 'messages'.
+        """
+        # Prepare parameters for Responses API
+        params = {
+            "model": self.model_name,
+            "input": prompt,  # Responses API uses 'input' not 'messages'
+            "temperature": self.temperature,
+            "seed": self.seed,
+        }
+
+        # Add reasoning_effort for GPT-5.1 models
+        if "5.1" in self.model_name or "gpt-5" in self.model_name:
+            params["reasoning_effort"] = self.reasoning_effort
+
+        # Merge with any additional kwargs
+        params.update(kwargs)
+
+        # Call Responses API
+        response = self.client.responses.create(**params)
+
+        # Extract text from response
+        # Responses API returns output_text or structured output
+        return response.output_text
 
     def count_tokens(self, text: str) -> int:
         return len(self.encoding.encode(text))
@@ -919,8 +1016,14 @@ from src.evaluation.answerer import Answerer
 from src.evaluation.metrics import MetricsCalculator
 
 def run_pilot():
-    # Setup
-    model = OpenAIModel("gpt-3.5-turbo", temperature=0.0)
+    # Setup - Use GPT-5.1 Instant (Nov 2025)
+    # For cost savings, could use "gpt-4o" or wait for gpt-5-mini
+    model = OpenAIModel(
+        model_name="gpt-5.1-chat-latest",  # GPT-5.1 Instant
+        temperature=0.0,
+        seed=42,  # For reproducibility
+        reasoning_effort="none"  # Disable adaptive reasoning for faster responses
+    )
 
     # Load data
     documents = DatasetLoader.load_cnn_dailymail(num_samples=10)
@@ -1018,7 +1121,7 @@ if __name__ == "__main__":
 
 **Tasks**:
 
-**8.1: Experiment Configuration**
+**8.1: Experiment Configuration** (Updated for GPT-5.1)
 ```yaml
 # experiments/configs/main_config.yaml
 experiment:
@@ -1028,8 +1131,15 @@ experiment:
   seed: 42
 
 model:
-  name: "gpt-3.5-turbo"
+  # Use GPT-5.1 Instant (November 2025) - adaptive reasoning, fast
+  name: "gpt-5.1-chat-latest"
+  # Alternative models:
+  # - "gpt-5.1-thinking" for deep reasoning (slower, more expensive)
+  # - "gpt-5" for base GPT-5
+  # - "gpt-4o" for cost savings / fallback
   temperature: 0.0
+  seed: 42
+  reasoning_effort: "none"  # Options: "none", "minimal", "medium", "high"
 
 compression:
   token_limit: 1500
