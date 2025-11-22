@@ -101,6 +101,7 @@ def main():
 
     # Run experiment
     results = []
+    failed_docs = []
 
     for i, doc in enumerate(documents):
         print("-" * 80)
@@ -119,6 +120,11 @@ def main():
             print(f"Generating {NUM_QUESTIONS_PER_DOC} questions...")
             qa_pairs = supervisor.generate_questions(text, num_questions=NUM_QUESTIONS_PER_DOC)
             print(f"✓ Generated {len(qa_pairs)} questions")
+
+            # Validate we got questions
+            if len(qa_pairs) == 0:
+                print(f"⚠  No questions generated for document {doc_id}, skipping...")
+                continue
 
             # Step 2: Compress document (Self-compression)
             print("Compressing document (self-compression)...")
@@ -192,6 +198,7 @@ def main():
 
         except Exception as e:
             print(f"✗ Error processing document {doc_id}: {e}")
+            failed_docs.append({"doc_id": doc_id, "error": str(e)})
             continue
 
     # Save results
@@ -208,6 +215,12 @@ def main():
                 "timestamp": timestamp,
             },
             "results": results,
+            "failed_documents": failed_docs,
+            "summary": {
+                "total_attempted": NUM_DOCS,
+                "successful": len(results),
+                "failed": len(failed_docs),
+            },
         }, f, indent=2)
 
     print(f"✓ Results saved to: {output_file}")
@@ -219,7 +232,9 @@ def main():
     print("=" * 80)
 
     total_questions = sum(len(doc["questions"]) for doc in results)
-    print(f"Total documents: {len(results)}")
+    print(f"Documents attempted: {NUM_DOCS}")
+    print(f"Documents successful: {len(results)}")
+    print(f"Documents failed: {len(failed_docs)}")
     print(f"Total questions: {total_questions}")
     print()
 
@@ -240,22 +255,30 @@ def main():
             no_em.append(q["no_context_metrics"]["exact_match"])
             no_f1.append(q["no_context_metrics"]["f1"])
 
-    print("Average Exact Match:")
-    print(f"  Self-Compression:  {sum(compressed_em)/len(compressed_em):.3f}")
-    print(f"  Full Context:      {sum(full_em)/len(full_em):.3f}")
-    print(f"  No Context:        {sum(no_em)/len(no_em):.3f}")
-    print()
+    # Check if we have results before computing averages
+    if len(compressed_em) > 0:
+        print("Average Exact Match:")
+        print(f"  Self-Compression:  {sum(compressed_em)/len(compressed_em):.3f}")
+        print(f"  Full Context:      {sum(full_em)/len(full_em):.3f}")
+        print(f"  No Context:        {sum(no_em)/len(no_em):.3f}")
+        print()
 
-    print("Average F1 Score:")
-    print(f"  Self-Compression:  {sum(compressed_f1)/len(compressed_f1):.3f}")
-    print(f"  Full Context:      {sum(full_f1)/len(full_f1):.3f}")
-    print(f"  No Context:        {sum(no_f1)/len(no_f1):.3f}")
-    print()
+        print("Average F1 Score:")
+        print(f"  Self-Compression:  {sum(compressed_f1)/len(compressed_f1):.3f}")
+        print(f"  Full Context:      {sum(full_f1)/len(full_f1):.3f}")
+        print(f"  No Context:        {sum(no_f1)/len(no_f1):.3f}")
+        print()
+    else:
+        print("⚠  No results to compute averages (all documents failed)")
+        print()
 
     # Compression stats
-    compression_ratios = [doc["compression_metadata"]["compression_ratio"] for doc in results]
-    avg_ratio = sum(compression_ratios) / len(compression_ratios)
-    print(f"Average Compression Ratio: {avg_ratio:.2f}x")
+    if len(results) > 0:
+        compression_ratios = [doc["compression_metadata"]["compression_ratio"] for doc in results]
+        avg_ratio = sum(compression_ratios) / len(compression_ratios)
+        print(f"Average Compression Ratio: {avg_ratio:.2f}x")
+    else:
+        print("⚠  No compression statistics available")
     print()
 
     print("=" * 80)

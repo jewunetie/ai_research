@@ -1,5 +1,7 @@
 """No context baseline - provides empty context."""
 
+from typing import Tuple, Dict, Any
+
 
 class NoContextBaseline:
     """
@@ -9,7 +11,7 @@ class NoContextBaseline:
     questions with zero information about the document?
     """
 
-    def process(self, text: str) -> tuple:
+    def process(self, text: str) -> Tuple[str, Dict[str, Any]]:
         """
         Return empty context.
 
