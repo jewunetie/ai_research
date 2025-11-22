@@ -12,10 +12,11 @@
 
 ### **Hardware-Optimized Design**
 - **Platform**: M4 Max MacBook Pro (Apple Silicon)
-- **Model**: Qwen3-0.6B (smallest Qwen3 model)
+- **Model**: Qwen3-0.6B-Instruct (smallest Qwen3 model, instruction-tuned)
 - **Framework**: MLX (Apple's optimized framework) or llama.cpp
 - **Memory**: Efficient - 0.6B model fits comfortably in unified memory
 - **Performance**: Fast inference expected on M4 Neural Engine
+- **Mode**: Thinking mode enabled for all generations (both baseline and MECE)
 
 ### **Experimental Scope**
 - **Primary Comparison**: MECE prompting vs Baseline CoT (2 conditions)
@@ -69,9 +70,20 @@ def compute_mutual_exclusivity(reasoning_steps: List[str]) -> Dict[str, float]:
             'embedding_me_score': float,  # 0-1, higher is better
             'case_overlap_me_score': float,  # 0-1, higher is better
             'avg_pairwise_similarity': float,  # 0-1, lower is better
-            'num_overlapping_cases': int
+            'num_overlapping_cases': int,
+            'total_condition_pairs': int
         }
     """
+    # Edge case: fewer than 2 steps
+    if len(reasoning_steps) < 2:
+        return {
+            'embedding_me_score': 1.0,
+            'case_overlap_me_score': 1.0,
+            'avg_pairwise_similarity': 0.0,
+            'num_overlapping_cases': 0,
+            'total_condition_pairs': 0
+        }
+
     # Embedding-based
     embeddings = sentence_transformer.encode(reasoning_steps)
     similarities = cosine_similarity_matrix(embeddings)
@@ -81,11 +93,16 @@ def compute_mutual_exclusivity(reasoning_steps: List[str]) -> Dict[str, float]:
     conditions = extract_case_conditions(reasoning_steps)
     overlaps = count_overlapping_conditions(conditions)
 
+    # Calculate total possible condition pairs
+    n_conditions = len(conditions)
+    total_pairs = n_conditions * (n_conditions - 1) // 2 if n_conditions > 1 else 1
+
     return {
         'embedding_me_score': 1 - avg_similarity,
-        'case_overlap_me_score': 1 - (overlaps / max(1, len(conditions))),
+        'case_overlap_me_score': 1 - (overlaps / total_pairs),  # Fixed: divide by pairs not count
         'avg_pairwise_similarity': avg_similarity,
-        'num_overlapping_cases': overlaps
+        'num_overlapping_cases': overlaps,
+        'total_condition_pairs': int(total_pairs)
     }
 ```
 
@@ -481,13 +498,14 @@ class MECEEvaluator:
 ### **Phase 2: Model Setup** (Day 1-2)
 
 **Tasks**:
-1. Download Qwen3-0.6B from HuggingFace
+1. Download Qwen3-0.6B-Instruct from HuggingFace
 2. Test inference on M4 Max (MLX preferred for speed)
-3. Benchmark inference speed (should be fast!)
-4. Implement `QwenInference` class
-5. Test with sample prompts
+3. Verify thinking mode can be enabled via prompts
+4. Benchmark inference speed (should be fast!)
+5. Implement `QwenInference` class with thinking mode support
+6. Test with sample prompts in both baseline and MECE formats
 
-**Deliverable**: Working Qwen3-0.6B inference on M4 Max
+**Deliverable**: Working Qwen3-0.6B-Instruct inference on M4 Max with thinking mode enabled
 
 ### **Phase 3: Prompt Engineering** (Day 2)
 
@@ -604,10 +622,11 @@ class MECEEvaluator:
   - MECE score (combined)
 
 **Controls**:
-- Same model (Qwen3-0.6B)
+- Same model (Qwen3-0.6B-Instruct)
+- Same thinking mode (enabled for both conditions)
 - Same temperature (0.7)
 - Same max_tokens (512)
-- Same random seed
+- Same random seed (42)
 
 ### **8.2 Analysis Plan**
 
@@ -672,12 +691,13 @@ class MECEEvaluator:
 
 ```yaml
 model:
-  name: "Qwen/Qwen3-0.6B"
+  name: "Qwen/Qwen3-0.6B-Instruct"  # Instruction-tuned version
   framework: "mlx"  # or "llama.cpp" or "transformers"
   device: "mps"  # Metal Performance Shaders for M4
   max_tokens: 512
   temperature: 0.7
   top_p: 0.9
+  thinking_mode: true  # Enable thinking mode for all generations
 
 dataset:
   path: "data/math_case_analysis.json"
