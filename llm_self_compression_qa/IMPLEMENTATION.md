@@ -149,6 +149,18 @@ llm_self_compression_qa/
 
 **This implementation uses the latest OpenAI APIs as of November 2025:**
 
+**⚠️ IMPORTANT: VERIFICATION REQUIRED DURING PHASE 0**
+
+Since OpenAI's official documentation was inaccessible during planning, the following MUST be verified when you begin implementation:
+
+1. **Responses API Syntax**: Confirm `client.responses.create()` exists and uses `input` parameter
+2. **Response Format**: Verify response has `output_text` attribute (fallback to `choices` included)
+3. **Model Names**: Test actual model names (`gpt-5.1-chat-latest`, `gpt-5.1-thinking`, etc.)
+4. **Parameters**: Confirm `seed`, `reasoning_effort`, `max_tokens` are supported
+5. **Pricing**: Check actual GPT-5.1 costs before running experiments (pricing TBD as of Nov 2025)
+
+**Fallback Strategy**: If Responses API doesn't exist, code includes graceful fallback to Chat Completions API format.
+
 ### Major Changes from Pre-2025 Implementations:
 
 1. **Responses API** (introduced March 2025):
@@ -272,6 +284,40 @@ dev = [
 - Can count tokens accurately
 - All tests pass
 
+**CRITICAL VERIFICATION STEPS** (Phase 0):
+
+```python
+# Test script to verify API works
+from openai import OpenAI
+
+client = OpenAI()
+
+# Test 1: Verify Responses API exists
+try:
+    response = client.responses.create(
+        model="gpt-5.1-chat-latest",  # or "gpt-4o" as fallback
+        input="Hello, this is a test.",
+        temperature=0.0,
+        seed=42
+    )
+    print("✅ Responses API works!")
+    print(f"Response: {response.output_text}")
+except AttributeError:
+    print("❌ Responses API not found. Use Chat Completions instead:")
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Use available model
+        messages=[{"role": "user", "content": "Hello, this is a test."}],
+        temperature=0.0,
+        seed=42
+    )
+    print(f"Response: {response.choices[0].message.content}")
+except Exception as e:
+    print(f"❌ Error: {e}")
+    print("Check model name and API key")
+```
+
+Run this test immediately after installation to determine which API version to use.
+
 ---
 
 ### Phase 1: Core Infrastructure (Estimated: 1 day)
@@ -351,6 +397,9 @@ class OpenAIModel(BaseLLM):
         Generate completion using the Responses API (March 2025+).
 
         Note: Responses API uses 'input' parameter instead of 'messages'.
+
+        Raises:
+            RuntimeError: If API call fails or response format is unexpected
         """
         # Prepare parameters for Responses API
         params = {
@@ -367,12 +416,82 @@ class OpenAIModel(BaseLLM):
         # Merge with any additional kwargs
         params.update(kwargs)
 
-        # Call Responses API
-        response = self.client.responses.create(**params)
+        try:
+            # Call Responses API
+            response = self.client.responses.create(**params)
 
-        # Extract text from response
-        # Responses API returns output_text or structured output
-        return response.output_text
+            # Extract text from response
+            # Responses API returns output_text or structured output
+            if hasattr(response, 'output_text'):
+                return response.output_text
+            elif hasattr(response, 'choices') and len(response.choices) > 0:
+                # Fallback to Chat Completions format if needed
+                return response.choices[0].message.content
+            else:
+                raise RuntimeError(f"Unexpected response format: {response}")
+
+        except AttributeError as e:
+            raise RuntimeError(
+                f"Response missing expected attributes. API may have changed. "
+                f"Error: {e}. Response: {response if 'response' in locals() else 'N/A'}"
+            )
+        except Exception as e:
+            raise RuntimeError(f"API call failed: {e}")
+
+    def count_tokens(self, text: str) -> int:
+        return len(self.encoding.encode(text))
+
+    def get_model_name(self) -> str:
+        return self.model_name
+```
+
+**Alternative: Chat Completions API Implementation (Fallback)**
+
+If Responses API is not available, use this implementation instead:
+
+```python
+# src/models/openai_model.py (Chat Completions version)
+from openai import OpenAI
+import tiktoken
+from .base import BaseLLM
+
+class OpenAIModel(BaseLLM):
+    """
+    OpenAI model wrapper using Chat Completions API (legacy but stable).
+    Use this if Responses API is not available.
+    """
+
+    def __init__(
+        self,
+        model_name="gpt-4o",  # Verified working model
+        temperature=0.0,
+        seed=42,
+        api_key=None
+    ):
+        self.client = OpenAI(api_key=api_key)
+        self.model_name = model_name
+        self.temperature = temperature
+        self.seed = seed
+
+        try:
+            self.encoding = tiktoken.encoding_for_model(model_name)
+        except KeyError:
+            self.encoding = tiktoken.get_encoding("o200k_base")
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        """Generate completion using Chat Completions API."""
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=self.temperature,
+                seed=self.seed,
+                **kwargs
+            )
+            return response.choices[0].message.content
+
+        except Exception as e:
+            raise RuntimeError(f"API call failed: {e}")
 
     def count_tokens(self, text: str) -> int:
         return len(self.encoding.encode(text))
@@ -1313,10 +1432,16 @@ class StatisticalAnalyzer:
 
 ### Computational Resources
 
-**API-Based (GPT-3.5)**:
-- Pilot (10 docs): ~200 API calls, ~$2-3, 1 hour
-- Main (100 docs): ~2000 API calls, ~$20-30, 5-8 hours
-- Extended (1000 docs): ~20,000 API calls, ~$200-300, 2-3 days
+**API-Based (GPT-5.1-chat-latest)**:
+- Pilot (10 docs): ~200 API calls, **$TBD** (pricing not yet published for GPT-5.1), 1-2 hours
+- Main (100 docs): ~2000 API calls, **$TBD** (estimate: $50-150 based on GPT-4 pricing), 8-12 hours
+- Extended (1000 docs): ~20,000 API calls, **$TBD** (estimate: $500-1500), 2-3 days
+
+**Cost Fallback Options**:
+- Use `gpt-4o` for lower costs (~30-50% of GPT-5 pricing)
+- Use `gpt-3.5-turbo` via Chat Completions API for budget prototyping (~$10-30 for main experiment)
+
+**NOTE**: GPT-5.1 pricing not yet publicly available as of November 2025. Estimates based on historical GPT-4 → GPT-5 pricing patterns. Verify actual costs before running large experiments.
 
 **Local Models (Llama-2-7B)**:
 - Requires: GPU with 16GB VRAM
