@@ -1,747 +1,393 @@
-# Implementation Plan
+# Implementation Plan: Format-Agnostic Zero-Shot Transfer
 
-## Overview
-
-This document provides a **phased, incremental implementation plan** for the byte-level image encoding research project. Each phase builds on the previous one and can be executed independently.
-
-**Timeline Estimate**: 2-3 weeks for Phases 1-3, +1 week for Phase 4 (optional)
+**Project**: Byte-Level Image Encoding Research
+**Primary Objective**: Test if byte-level models learn format-agnostic or format-specific representations
+**Timeline**: 2-3 weeks (part-time) or 1 week (full-time)
+**Compute Budget**: ~20 GPU hours (RTX 3090 / A100)
+**Status**: Ready to implement
 
 ---
 
-## Phase 0: Project Setup (Day 1)
+## Executive Summary
 
-### Goals
-- Set up Python environment with uv
-- Install dependencies
-- Create project structure
-- Verify CIFAR-10 dataset loads
+This implementation plan focuses on the **primary novel research question**: Can a byte-level model trained on JPEG bytes classify PNG/WebP/BMP images zero-shot?
 
-### Tasks
+**Experiment Design**:
+1. Encode CIFAR-10 in 4 formats (JPEG, PNG, WebP, BMP)
+2. Train ByteFormer on JPEG-only
+3. Test zero-shot on all 4 formats
+4. Analyze results: format-agnostic vs format-specific learning
 
-#### 0.1 Initialize uv Project
+**Expected Outcome**: Publishable result regardless of transfer success/failure
+
+---
+
+## Repository Structure
+
+```
+byte_level_image_encoding/
+├── README.md
+├── CLAUDE.md
+├── RESEARCH.md
+├── IMPLEMENTATION.md (this file)
+├── data/
+│   ├── cifar10/
+│   │   ├── jpeg_q75/  # CIFAR-10 as JPEG quality 75
+│   │   ├── png/       # CIFAR-10 as PNG
+│   │   ├── webp/      # CIFAR-10 as WebP
+│   │   └── bmp/       # CIFAR-10 as BMP
+│   └── raw/           # Original CIFAR-10
+├── src/
+│   ├── data/
+│   │   ├── encode_formats.py
+│   │   └── byte_dataset.py
+│   ├── models/
+│   │   └── byteformer.py
+│   ├── training/
+│   │   ├── train.py
+│   │   ├── evaluate.py
+│   │   └── config.py
+│   └── analysis/
+│       ├── visualize.py
+│       └── failure_analysis.py
+├── experiments/
+│   └── h1_zero_shot_transfer/
+│       ├── jpeg_q75/
+│       └── results/
+└── requirements.txt
+```
+
+---
+
+## Phase 0: Environment Setup (Day 1, ~2 hours)
+
+### Dependencies
+
+```txt
+# requirements.txt
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24.0
+Pillow>=10.0.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+tensorboard>=2.13.0
+tqdm>=4.65.0
+```
+
+### Installation
+
 ```bash
 cd byte_level_image_encoding
-uv init
-uv add torch torchvision torchaudio --index https://download.pytorch.org/whl/cu121
-uv add pillow numpy matplotlib tqdm pyyaml
-uv add pytest --dev
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
-#### 0.2 Create Directory Structure
-```bash
-mkdir -p src/{data,models,training,utils}
-mkdir -p configs scripts notebooks tests
-touch src/{__init__,data/__init__,models/__init__,training/__init__,utils/__init__}.py
-```
+### Hardware Requirements
 
-#### 0.3 Test CIFAR-10 Loading
-Create `scripts/test_setup.py`:
+**Minimum**: RTX 3090 (24GB VRAM), 32 GB RAM, 20 GB storage
+**Optimal**: A100 (40GB), 64 GB RAM, 50 GB storage
+
+---
+
+## Phase 1: Data Preparation (Day 1-2, ~4 hours)
+
+### Step 1.1: Download CIFAR-10
+
 ```python
-import torch
+# scripts/download_cifar10.py
 import torchvision
 
-# Test CIFAR-10 download
-dataset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True)
-print(f"Dataset loaded: {len(dataset)} images")
-print(f"Classes: {dataset.classes}")
+trainset = torchvision.datasets.CIFAR10(root='./data/raw', train=True, download=True)
+testset = torchvision.datasets.CIFAR10(root='./data/raw', train=False, download=True)
 
-# Test basic operations
-img, label = dataset[0]
-print(f"Image type: {type(img)}, size: {img.size}")
-print(f"Label: {label} ({dataset.classes[label]})")
+print(f"Train: {len(trainset)}, Test: {len(testset)}")
 ```
 
-#### 0.4 Verify GPU Access
+### Step 1.2: Encode to Multiple Formats
+
+Create `src/data/encode_formats.py` to convert CIFAR-10 to JPEG/PNG/WebP/BMP.
+
+**Expected file sizes** (32×32 images):
+- JPEG (Q75): ~1,500 bytes
+- PNG: ~1,200 bytes
+- WebP (Q75): ~800 bytes
+- BMP: ~3,078 bytes
+
+### Step 1.3: Byte Dataset Loader
+
+Create `src/data/byte_dataset.py`:
+
 ```python
-import torch
-print(f"PyTorch version: {torch.__version__}")
-print(f"CUDA available: {torch.cuda.is_available()}")
-if torch.cuda.is_available():
-    print(f"CUDA version: {torch.version.cuda}")
-    print(f"GPU: {torch.cuda.get_device_name(0)}")
-```
-
-### Success Criteria
-- ✅ uv environment created
-- ✅ All dependencies installed
-- ✅ CIFAR-10 downloads successfully
-- ✅ GPU detected (if available)
-
----
-
-## Phase 1: Baseline Implementation (Days 2-4)
-
-### Goals
-- Implement pixel-level baseline (ResNet-18)
-- Train and validate on CIFAR-10
-- Establish performance benchmark
-
-### Tasks
-
-#### 1.1 Implement Pixel Dataset (`src/data/cifar10_pixels.py`)
-```python
-class PixelLevelCIFAR10:
-    def __init__(self, root, train=True, download=True):
-        # Standard torchvision implementation with transforms
-        pass
-
-    @staticmethod
-    def get_default_transforms(train=True):
-        # RandomCrop, RandomHorizontalFlip, Normalize
-        pass
-```
-
-**Test**: Load 10 samples, visualize
-
-#### 1.2 Implement ResNet-18 Baseline (`src/models/resnet.py`)
-```python
-class ResNet18CIFAR(nn.Module):
-    def __init__(self, num_classes=10):
-        # Adapt torchvision ResNet-18 for 32×32 images
-        pass
-```
-
-**Test**: Forward pass with dummy input, verify output shape
-
-#### 1.3 Implement Training Loop (`src/training/trainer.py`)
-```python
-class Trainer:
-    def train_epoch(self): pass
-    def validate(self): pass
-    def train(self, num_epochs): pass
-    def save_checkpoint(self, path): pass
-```
-
-**Test**: Train for 1 epoch, verify loss decreases
-
-#### 1.4 Create Training Script (`scripts/train_resnet18.py`)
-```python
-def main():
-    # Load config
-    # Create data loaders
-    # Initialize model, optimizer, scheduler
-    # Create trainer
-    # Train for num_epochs
-    # Save results
-```
-
-#### 1.5 Create Configuration (`configs/resnet18_pixels.yaml`)
-```yaml
-experiment_name: "resnet18_cifar10_baseline"
-model:
-  name: "resnet18"
-  num_classes: 10
-training:
-  num_epochs: 100
-  batch_size: 128
-  learning_rate: 0.1
-  optimizer: "sgd"
-  momentum: 0.9
-  weight_decay: 0.0005
-  scheduler: "multistep"
-  milestones: [50, 75]
-```
-
-#### 1.6 Train ResNet-18 Baseline
-```bash
-uv run python scripts/train_resnet18.py --config configs/resnet18_pixels.yaml
-```
-
-**Expected Results**:
-- Training time: ~3 hours (100 epochs, A100)
-- Final accuracy: 92-95% on test set
-- Loss curves: Smooth convergence
-
-#### 1.7 Analyze and Document Results
-- Plot training/validation curves
-- Measure inference time
-- Count FLOPs (use `fvcore` or manual calculation)
-- Save to `results/resnet18_baseline.json`
-
-### Success Criteria
-- ✅ ResNet-18 trains successfully
-- ✅ Achieves ≥92% test accuracy
-- ✅ Results documented (accuracy, time, FLOPs)
-- ✅ Checkpoints saved
-
-### Deliverables
-- `src/data/cifar10_pixels.py`
-- `src/models/resnet.py`
-- `src/training/trainer.py`
-- `scripts/train_resnet18.py`
-- `configs/resnet18_pixels.yaml`
-- `results/resnet18_baseline.json`
-- `checkpoints/resnet18_best.pt`
-
----
-
-## Phase 2: Byte-Level Implementation (Days 5-10)
-
-### Goals
-- Implement byte-level data loading
-- Implement ByteFormer architecture
-- Train on CIFAR-10 with byte sequences
-
-### Tasks
-
-#### 2.1 Implement Format Conversion Utils (`src/data/transforms.py`)
-```python
-def image_to_bytes(image: PIL.Image, format: str, quality: int = 75) -> List[int]:
-    """Convert PIL Image to byte sequence."""
-    pass
-
-def pad_or_truncate(byte_seq: List[int], length: int) -> List[int]:
-    """Pad with zeros or truncate to fixed length."""
-    pass
-```
-
-**Test**: Convert CIFAR-10 samples to JPEG/PNG, verify byte sequences
-
-#### 2.2 Analyze File Sizes
-Create `scripts/analyze_byte_lengths.py`:
-```python
-# Convert 1000 CIFAR-10 images to JPEG/PNG
-# Measure byte sequence lengths
-# Plot distribution
-# Determine appropriate max_length
-```
-
-**Output**: Histogram of byte lengths, recommended max_length
-
-#### 2.3 Implement Byte Dataset (`src/data/cifar10_bytes.py`)
-```python
-class ByteLevelCIFAR10:
-    def __init__(self, root, train=True, format='mixed',
-                 jpeg_quality=75, max_length=8192):
-        pass
+class ByteImageDataset(Dataset):
+    """Load image files as raw byte sequences"""
+    def __init__(self, data_dir, max_bytes=8192, pad_value=0):
+        self.data_dir = Path(data_dir)
+        self.max_bytes = max_bytes
+        self.files = sorted(list(self.data_dir.glob('*.*')))
+        self.labels = [int(f.stem.split('_class')[1]) for f in self.files]
 
     def __getitem__(self, idx):
-        # Load image
-        # Convert to bytes (JPEG or PNG based on format)
-        # Pad/truncate
-        # Return tensor
-        pass
+        with open(self.files[idx], 'rb') as f:
+            byte_values = list(f.read())
+
+        # Pad or truncate to max_bytes
+        if len(byte_values) > self.max_bytes:
+            byte_values = byte_values[:self.max_bytes]
+        else:
+            byte_values += [0] * (self.max_bytes - len(byte_values))
+
+        return torch.tensor(byte_values, dtype=torch.long), \
+               torch.tensor(self.labels[idx], dtype=torch.long)
 ```
 
-**Test**: Load batch, verify shapes, check format distribution
+---
 
-#### 2.4 Implement Shifted Window Attention (`src/models/layers.py`)
+## Phase 2: Model Implementation (Day 2-3, ~6 hours)
+
+### ByteFormer Architecture
+
+Create `src/models/byteformer.py`:
+
 ```python
-class ShiftedWindowTransformerBlock(nn.Module):
-    def __init__(self, d_model, nhead, window_size, shift=False):
-        pass
+class ByteFormer(nn.Module):
+    """ByteFormer for CIFAR-10"""
+    def __init__(
+        self,
+        max_bytes=8192,
+        d_model=192,
+        nhead=6,
+        num_layers=6,
+        downsample_stride=16,
+        num_classes=10
+    ):
+        super().__init__()
 
-    def forward(self, x):
-        # Shift if needed
-        # Window partition
-        # Apply attention within windows
-        # Reverse window partition
-        # FFN
-        pass
+        # 1. Byte embedding (256 vocab)
+        self.byte_embedding = nn.Embedding(256, d_model, padding_idx=0)
+
+        # 2. Downsampling (strided conv)
+        self.downsample = nn.Conv1d(d_model, d_model,
+                                     kernel_size=32, stride=16)
+
+        # 3. Positional encoding
+        seq_len = math.ceil(max_bytes / downsample_stride)
+        self.pos_encoding = nn.Parameter(torch.randn(1, seq_len, d_model) * 0.02)
+
+        # 4. Transformer
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model, nhead, dim_feedforward=768,
+            dropout=0.1, activation='gelu', batch_first=True
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers)
+
+        # 5. Classification head
+        self.norm = nn.LayerNorm(d_model)
+        self.classifier = nn.Linear(d_model, num_classes)
+
+    def forward(self, byte_sequence):
+        # Embed + downsample + transformer + classify
+        x = self.byte_embedding(byte_sequence)
+        x = self.downsample(x.transpose(1, 2)).transpose(1, 2)
+        x = x + self.pos_encoding
+        x = self.transformer(x)
+        x = self.norm(x.mean(dim=1))
+        return self.classifier(x)
 ```
 
-**Test**: Forward pass with dummy input, verify output shape
+**Expected**: ~8-10M parameters
 
-#### 2.5 Implement ByteFormer (`src/models/byteformer.py`)
+---
+
+## Phase 3: Training (Day 3-5, ~12-15 GPU hours)
+
+### Training Configuration
+
+Create `src/training/config.py`:
+
 ```python
-class ByteFormerCIFAR(nn.Module):
-    def __init__(self, max_length=8192, d_model=192, nhead=3,
-                 num_layers=6, window_size=128, downsample_layers=[2, 4]):
-        # Byte embedding
-        # Positional encoding
-        # Initial downsampling (strided conv)
-        # Transformer blocks
-        # Hierarchical downsampling
-        # Classification head
-        pass
+@dataclass
+class TrainingConfig:
+    # Model
+    max_bytes: int = 8192
+    d_model: int = 192
+    nhead: int = 6
+    num_layers: int = 6
 
-    def forward(self, byte_seq):
-        pass
+    # Training
+    batch_size: int = 64
+    num_epochs: int = 100
+    learning_rate: float = 1e-3
+    weight_decay: float = 0.01
+
+    # Paths
+    data_dir: str = './data/cifar10'
+    output_dir: str = './experiments/h1_zero_shot_transfer'
 ```
 
-**Test**: Forward pass, verify shapes at each stage, count parameters
+### Training Script
 
-#### 2.6 Create ByteFormer Configs
-- `configs/byteformer_jpeg.yaml` (JPEG only)
-- `configs/byteformer_png.yaml` (PNG only)
-- `configs/byteformer_mixed.yaml` (Mixed format)
+Create `src/training/train.py` with standard PyTorch training loop.
 
-#### 2.7 Train ByteFormer Variants
+**Expected**:
+- Training time: 12-15 hours (RTX 3090)
+- JPEG test accuracy: 80-85%
+- GPU memory: ~18-20 GB
+
+### Training Command
+
 ```bash
-# Train JPEG-only
-uv run python scripts/train_byteformer.py --config configs/byteformer_jpeg.yaml
-
-# Train PNG-only
-uv run python scripts/train_byteformer.py --config configs/byteformer_png.yaml
-
-# Train mixed
-uv run python scripts/train_byteformer.py --config configs/byteformer_mixed.yaml
+python src/training/train.py
 ```
-
-**Expected Results** (per variant):
-- Training time: ~15-20 hours (100 epochs, A100)
-- Target accuracy: 80-90% on test set
-- Memory usage: Higher than ResNet-18
-
-#### 2.8 Compare Formats
-Create `scripts/compare_formats.py`:
-```python
-# Load checkpoints for JPEG, PNG, Mixed
-# Test each on JPEG test set
-# Test each on PNG test set
-# Create comparison table
-```
-
-**Analysis**:
-- Does mixed training improve cross-format generalization?
-- Which format is easier to learn from?
-- Is there a format-specific accuracy gap?
-
-### Success Criteria
-- ✅ ByteFormer trains successfully
-- ✅ Achieves ≥80% test accuracy (at least one variant)
-- ✅ Mixed format training works
-- ✅ Format comparison completed
-
-### Deliverables
-- `src/data/cifar10_bytes.py`
-- `src/data/transforms.py`
-- `src/models/byteformer.py`
-- `src/models/layers.py`
-- `scripts/train_byteformer.py`
-- `scripts/analyze_byte_lengths.py`
-- `scripts/compare_formats.py`
-- `configs/byteformer_{jpeg,png,mixed}.yaml`
-- `results/byteformer_jpeg.json`
-- `results/byteformer_png.json`
-- `results/byteformer_mixed.json`
-- `checkpoints/byteformer_{jpeg,png,mixed}_best.pt`
 
 ---
 
-## Phase 3: Robustness Evaluation (Days 11-14)
+## Phase 4: Zero-Shot Evaluation (Day 5-6, ~2 hours)
 
-### Goals
-- Test robustness to byte corruption
-- Test format generalization
-- Demonstrate advantages of byte-level encoding
+### Evaluation Script
 
-### Tasks
+Create `src/training/evaluate.py`:
 
-#### 3.1 Implement Corruption Utils (`src/data/corruption.py`)
 ```python
-class ByteCorruption:
-    def __init__(self, corruption_rate=0.01):
-        pass
+def main():
+    # Load model trained on JPEG
+    model = load_model('./experiments/h1_zero_shot_transfer/jpeg_q75/best_model.pth')
 
-    def __call__(self, byte_tensor):
-        # Randomly flip bytes
-        pass
+    # Evaluate on all formats
+    formats = ['jpeg_q75', 'png', 'webp', 'bmp']
+    results = {}
 
-class PixelNoiseCorruption:
-    def __init__(self, noise_std=0.1):
-        pass
+    for fmt in formats:
+        acc = evaluate_format(model, fmt)
+        results[fmt] = acc
 
-    def __call__(self, image_tensor):
-        # Add Gaussian noise to pixels
-        pass
+    # Save results
+    save_results(results)
 
-class FileTruncation:
-    def __init__(self, truncation_ratio=0.1):
-        pass
-
-    def __call__(self, byte_tensor):
-        # Zero out trailing bytes
-        pass
+    # Print summary
+    jpeg_acc = results['jpeg_q75']
+    print(f"JPEG (train): {jpeg_acc:.2f}%")
+    for fmt in ['png', 'webp', 'bmp']:
+        ratio = results[fmt] / jpeg_acc
+        print(f"{fmt}: {results[fmt]:.2f}% ({ratio:.1%} transfer)")
 ```
 
-#### 3.2 Test Byte Corruption Robustness
-Create `scripts/test_byte_corruption.py`:
-```python
-# Load best ByteFormer checkpoint (mixed)
-# Load best ResNet-18 checkpoint
-# Test ByteFormer with byte corruption (0.1%, 0.5%, 1%, 2%, 5%)
-# Test ResNet-18 with pixel noise (equivalent levels)
-# Plot accuracy vs corruption rate
-```
+### Evaluation Command
 
-**Hypothesis**: Byte-level models more robust to byte corruption
-
-#### 3.3 Test Format Generalization
-Create `scripts/test_format_generalization.py`:
-```python
-# Convert CIFAR-10 test set to WebP, BMP (if feasible)
-# Test ByteFormer (mixed) on new formats
-# Test ResNet-18 on same formats (decoded pixels)
-# Compare zero-shot performance
-```
-
-**Hypothesis**: Mixed training enables better format generalization
-
-#### 3.4 Test File Truncation
-Create `scripts/test_truncation.py`:
-```python
-# Load ByteFormer checkpoint
-# Test with trailing bytes removed (5%, 10%, 20%, 50%)
-# Plot accuracy vs truncation level
-```
-
-**Analysis**: How gracefully does performance degrade?
-
-#### 3.5 Test JPEG Quality Robustness
-Create `scripts/test_jpeg_quality.py`:
-```python
-# Train ByteFormer on JPEG quality 75
-# Test on quality [50, 60, 70, 80, 90, 100]
-# Train ResNet-18 on quality 75
-# Test on same range
-# Compare robustness
-```
-
-#### 3.6 Create Comprehensive Comparison
-Create `scripts/create_comparison_table.py`:
-```python
-# Load all results
-# Create markdown table with:
-#   - Model, Accuracy, FLOPs, Params, Training Time
-#   - Robustness metrics
-# Generate plots
-```
-
-### Success Criteria
-- ✅ At least 1 robustness test shows byte-level advantage
-- ✅ All experiments documented
-- ✅ Comparison table created
-
-### Deliverables
-- `src/data/corruption.py`
-- `scripts/test_byte_corruption.py`
-- `scripts/test_format_generalization.py`
-- `scripts/test_truncation.py`
-- `scripts/test_jpeg_quality.py`
-- `scripts/create_comparison_table.py`
-- `results/robustness_comparison.json`
-- `results/comparison_table.md`
-- `notebooks/03_results_visualization.ipynb`
-
----
-
-## Phase 4: Advanced Models (Optional, Days 15-21)
-
-### Goals
-- Implement ViT-Tiny baseline
-- Implement hybrid byte+pixel model
-- Explore architectural improvements
-
-### Tasks
-
-#### 4.1 Implement ViT-Tiny (`src/models/vit.py`)
-```python
-class ViTTinyCIFAR(nn.Module):
-    def __init__(self, image_size=32, patch_size=4, d_model=192,
-                 depth=12, heads=3):
-        pass
-```
-
-**Train**: 100 epochs on CIFAR-10
-
-**Expected**: 85-90% accuracy (ViT underperforms CNNs on small datasets)
-
-#### 4.2 Implement Hybrid Model (`src/models/hybrid.py`)
-```python
-class HybridBytePixelModel(nn.Module):
-    def __init__(self, byte_encoder, pixel_encoder, fusion_dim=384):
-        self.byte_branch = byte_encoder  # ByteFormer
-        self.pixel_branch = pixel_encoder  # ResNet-18 backbone
-        self.fusion = nn.Sequential(...)  # Fusion MLP
-        pass
-
-    def forward(self, byte_seq, pixel_image):
-        # Process both modalities
-        # Fuse representations
-        # Classify
-        pass
-```
-
-#### 4.3 Train Hybrid Model
 ```bash
-uv run python scripts/train_hybrid.py --config configs/hybrid_model.yaml
+python src/training/evaluate.py
 ```
 
-**Hypothesis**: Hybrid model exceeds both modalities alone
-
-#### 4.4 Explore Architectural Variations
-- Try different downsampling ratios (4:1, 16:1)
-- Try different window sizes (64, 256)
-- Try sparse attention patterns
-- Try state space models (Mamba) instead of attention
-
-**Goal**: Find optimal architecture for byte sequences
-
-### Success Criteria
-- ✅ Hybrid model implemented and trained
-- ✅ At least one architectural variation tested
-- ✅ Results documented
-
-### Deliverables
-- `src/models/vit.py`
-- `src/models/hybrid.py`
-- `scripts/train_hybrid.py`
-- `configs/hybrid_model.yaml`
-- `results/hybrid_results.json`
-- `results/architectural_ablations.json`
-
 ---
 
-## Phase 5: Documentation and Analysis (Days 22-23)
-
-### Goals
-- Create comprehensive README
-- Document findings
-- Prepare reproducible artifacts
-
-### Tasks
-
-#### 5.1 Create README.md
-```markdown
-# Byte-Level Image Encoding for CIFAR-10
-
-## Overview
-...
-
-## Installation
-uv sync
-...
-
-## Quick Start
-...
-
-## Results
-...
-
-## Citation
-...
-```
-
-#### 5.2 Create RESULTS.md
-Document:
-- Final accuracy for all models
-- Computational costs
-- Robustness analysis
-- Key findings
-- Limitations
-- Future work
-
-#### 5.3 Create Reproducibility Guide
-- `REPRODUCING.md` with exact commands
-- Seed settings
-- Hardware requirements
-- Expected outputs
-
-#### 5.4 Clean Up Code
-- Add docstrings
-- Run linters (ruff, black)
-- Add type hints
-- Write unit tests
-
-#### 5.5 Create Visualizations
-- Training curves
-- Robustness plots
-- Architecture diagrams
-- Attention visualizations (if possible)
-
-### Deliverables
-- `README.md`
-- `RESULTS.md`
-- `REPRODUCING.md`
-- Clean, documented codebase
-- Visualization notebooks
-
----
-
-## Reproducibility Checklist
-
-### Fixed Seeds
-```python
-import torch
-import numpy as np
-import random
-
-def set_seed(seed=42):
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-```
-
-### Hyperparameter Documentation
-All configs saved as YAML files with:
-- Model architecture details
-- Training hyperparameters
-- Data augmentation settings
-- Random seeds
-
-### Checkpoint Management
-- Save best model (based on validation accuracy)
-- Save final model
-- Save optimizer state
-- Save training history
-- Include config in checkpoint
-
-### Logging
-- Use tensorboard or wandb for metric tracking
-- Log every 100 iterations
-- Save training curves as images
-- Log system info (GPU, PyTorch version, etc.)
-
----
-
-## Resource Estimates
-
-### Computational Requirements
-
-| Phase | GPU Hours (A100) | Wall Time | Storage |
-|-------|-----------------|-----------|---------|
-| Phase 0 | 0 | 1 hour | 500 MB |
-| Phase 1 | 3 | 1 day | 1 GB |
-| Phase 2 | 60 | 3-4 days | 5 GB |
-| Phase 3 | 10 | 1-2 days | 2 GB |
-| Phase 4 | 30 | 2-3 days | 3 GB |
-| **Total** | **~103** | **~2 weeks** | **~11 GB** |
-
-### Parallelization Opportunities
-- Train different format variants in parallel (3 jobs)
-- Run robustness tests in parallel (4 jobs)
-- Architectural ablations in parallel (variable)
-
-**With 3-4 GPUs**: Reduce wall time to ~1 week
-
----
-
-## Risk Mitigation
-
-### Risk 1: ByteFormer Doesn't Train
-**Symptoms**: Loss doesn't decrease, accuracy stays at random (10%)
-**Mitigations**:
-- Reduce learning rate
-- Increase batch size
-- Simplify architecture (fewer layers)
-- Check gradients (use `torch.autograd.grad_check`)
-
-### Risk 2: Out of Memory
-**Symptoms**: CUDA OOM errors
-**Mitigations**:
-- Reduce batch size
-- Reduce max_length (8192 → 4096)
-- Use gradient accumulation
-- Enable mixed precision training (fp16)
-
-### Risk 3: Accuracy Too Low
-**Symptoms**: ByteFormer <70% accuracy
-**Mitigations**:
-- Train longer (100 → 200 epochs)
-- Tune hyperparameters (learning rate, weight decay)
-- Try different downsampling strategies
-- Verify data pipeline (check byte sequences are correct)
-
-### Risk 4: No Robustness Advantage
-**Symptoms**: Byte models not more robust than pixel models
-**Mitigations**:
-- Try different corruption types
-- Test on more diverse scenarios
-- Focus on format generalization (clearer advantage)
-- Document negative results honestly
-
----
-
-## Success Metrics Summary
-
-### Minimum Viable Product (MVP)
-1. ✅ ResNet-18 baseline: ≥92% accuracy
-2. ✅ ByteFormer: ≥80% accuracy
-3. ✅ Training completes successfully
-4. ✅ Basic comparison documented
-
-### Target Goals
-5. ✅ ByteFormer: ≥85% accuracy
-6. ✅ At least 1 robustness advantage demonstrated
-7. ✅ Format comparison completed
-8. ✅ Comprehensive documentation
-
-### Stretch Goals
-9. ⏳ Hybrid model: ≥95% accuracy
-10. ⏳ Architectural ablations completed
-11. ⏳ Multiple robustness advantages shown
-12. ⏳ Published on GitHub with reproducible artifacts
-
----
-
-## Daily Checklist Template
-
-### Daily Progress Tracking
-- [ ] What did I complete today?
-- [ ] What challenges did I encounter?
-- [ ] What are tomorrow's priorities?
-- [ ] Do I need to adjust the plan?
-
-### Weekly Review
-- [ ] Are we on track?
-- [ ] What's the accuracy so far?
-- [ ] Any blockers?
-- [ ] Do we need to pivot?
-
----
-
-## Final Deliverables
-
-### Code
-- Clean, documented Python codebase
-- Configuration files for all experiments
-- Training and evaluation scripts
-- Unit tests
-
-### Documentation
-- CLAUDE.md (project overview)
-- RESEARCH.md (literature review)
-- ENCODING_SCHEMES.md (approach definitions)
-- DESIGN.md (architecture specifications)
-- IMPLEMENTATION.md (this document)
-- README.md (user guide)
-- RESULTS.md (findings)
-- REPRODUCING.md (reproducibility guide)
-
-### Data
-- Trained model checkpoints
-- Training logs and metrics
-- Result JSON files
-- Comparison tables
+## Phase 5: Analysis & Visualization (Day 6-7, ~4 hours)
 
 ### Visualizations
-- Training curves
-- Robustness plots
-- Architecture diagrams
-- Attention maps (if feasible)
 
-### Analysis
-- Jupyter notebooks with analysis
-- Comparison tables (markdown)
-- Summary statistics
+Create `src/analysis/visualize.py`:
 
----
+1. **Accuracy by format** (bar chart)
+2. **Transfer ratios** (PNG/WebP/BMP relative to JPEG)
+3. **Per-class heatmap** (which classes transfer well?)
 
-## Next Steps
+### Failure Analysis
 
-After completing this plan:
+Create `src/analysis/failure_analysis.py`:
 
-1. **Write Paper/Blog Post**: Summarize findings for broader audience
-2. **Open Source**: Publish on GitHub with reproducible artifacts
-3. **Scale Up**: Try on ImageNet or other datasets
-4. **Extend to Other Tasks**: Segmentation, detection, generation
-5. **Optimize Further**: Efficient architectures, quantization, distillation
-6. **Explore Applications**: Privacy-preserving inference, format-agnostic models
+- Which classes transfer best/worst?
+- Do simpler classes (e.g., vehicles) transfer better than complex (e.g., animals)?
+- Format-specific patterns (BMP > PNG > WebP)?
 
 ---
 
-*Last updated: 2025-11-21*
+## Results Interpretation
+
+### Scenario A: High Transfer (≥70%)
+
+**Finding**: Format-agnostic learning!
+**Publication**: CVPR/ICCV (major positive result)
+**Implication**: Train once, deploy anywhere
+
+### Scenario B: Zero Transfer (≤30%)
+
+**Finding**: Format-specific learning!
+**Publication**: NeurIPS (important negative result)
+**Implication**: Fundamental limitation of byte-level approach
+
+### Scenario C: Partial Transfer (40-70%)
+
+**Finding**: Mixed content + format features
+**Publication**: CVPR/ICCV/NeurIPS (analysis contribution)
+**Implication**: Need better architectures to separate content from format
+
+---
+
+## Success Criteria
+
+### Must-Have
+- [x] CIFAR-10 encoded in 4 formats
+- [ ] ByteFormer trained on JPEG (≥80% accuracy)
+- [ ] Zero-shot evaluation complete
+- [ ] Results visualizations created
+- [ ] Draft interpretation document
+
+### Should-Have
+- [ ] Per-class transfer analysis
+- [ ] Attention map visualization
+- [ ] Byte pattern statistics
+
+### Nice-to-Have
+- [ ] Pixel-level baseline comparison
+- [ ] Mixed-format training experiment
+- [ ] Hybrid pixel-byte model
+
+---
+
+## Timeline Summary
+
+| Phase | Duration | GPU Hours | Status |
+|-------|----------|-----------|--------|
+| 0. Setup | 2 hrs | 0 | ⏳ |
+| 1. Data Prep | 4 hrs | 0 | ⏳ |
+| 2. Model | 6 hrs | 0 | ⏳ |
+| 3. Training | 2 days | 12-15 | ⏳ |
+| 4. Eval | 2 hrs | 0.5 | ⏳ |
+| 5. Analysis | 4 hrs | 0 | ⏳ |
+| 6. Writing | 3 days | 0 | ⏳ |
+| **TOTAL** | **1-2 weeks** | **~15-20** | |
+
+---
+
+## Troubleshooting
+
+**Out of GPU memory**: Reduce batch_size (64→32)
+**Training slow**: Use mixed precision (torch.cuda.amp)
+**Poor JPEG accuracy**: Train longer (100→150 epochs)
+**All formats same accuracy**: Verify formats actually different (check file headers)
+
+---
+
+## Quick Start
+
+```bash
+# 1. Setup
+pip install -r requirements.txt
+
+# 2. Prepare data
+python src/data/encode_formats.py
+
+# 3. Train
+python src/training/train.py
+
+# 4. Evaluate
+python src/training/evaluate.py
+
+# 5. Visualize
+python src/analysis/visualize.py
+```
+
+---
+
+*Last updated: 2025-11-22*
+*Status: Ready for implementation*
