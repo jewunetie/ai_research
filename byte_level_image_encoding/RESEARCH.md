@@ -262,29 +262,173 @@ After 20K fine-tuning steps on ~3M images:
 
 ## 6. Research Gaps and Opportunities
 
-### 6.1 Systematic Comparisons Needed
+### 6.1 **🔥 NOVEL: Format-Agnostic Zero-Shot Transfer (UNTESTED)**
+
+**The Core Question**: Can a model trained **only** on JPEG bytes classify PNG/WebP/BMP images with **zero fine-tuning**?
+
+#### Why This Is Novel
+
+**Existing Work Limitations**:
+- **ByteFormer** (Apple 2023): Reports separate results for TIFF (77.3%), PNG (77%+), and JPEG (65.92%), but **does NOT test cross-format transfer**
+- **EvaByte** (2025): Uses JPEG for images, but **no evaluation on other formats**
+- **BLT** (Meta 2024): Focuses on text, minimal vision experiments
+- **No published work** has systematically studied: *"Train on format A, test on format B with zero shots"*
+
+#### Evidence This Has NOT Been Done
+
+From web research conducted 2025-11-22:
+
+1. **ByteFormer Paper Analysis**:
+   - GitHub repo contains separate training configurations for TIFF, PNG, and JPEG
+   - Each format trained and tested independently
+   - **No cross-format evaluation reported in paper or code**
+
+2. **Community Reports**:
+   - Stack Overflow user reported **20% accuracy drop** when training CNN on JPEGs, testing on PNGs (empirical evidence of format shift)
+   - General recommendation: "If you want to classify both PNG and JPG, train on both"
+   - **This suggests cross-format transfer is a known problem, but unstudied in byte-level models**
+
+3. **Cross-Modal Transfer (bGPT)**:
+   - bGPT (Microsoft, Feb 2024) showed **positive transfer** between images and audio bytes
+   - **Negative transfer** between text and images (different byte patterns)
+   - **Key insight**: "Shared byte patterns exist between modalities like audio and images"
+   - **Implication**: Cross-format transfer might work if formats share byte-level patterns
+
+4. **Domain Shift Research**:
+   - Extensive literature on distribution shift (camera changes, compression quality)
+   - **NO research** on file format as a domain shift factor in byte-level models
+   - Compression robustness studied (JPEG quality factors), but not JPEG→PNG transfer
+
+5. **ByteNet (Oct 2024)**:
+   - Uses byte-to-image visualization for file fragment classification
+   - Focuses on distinguishing formats (JPEG vs PNG vs Audio)
+   - **Orthogonal goal**: Classify file type, not transfer across types
+
+#### Why This Question Matters
+
+**Scenario A: High Transfer (PNG acc ≈ JPEG acc)**
+- **Implication**: Byte models learn **content-agnostic representations**
+- **Contribution**: First demonstration that byte-level features transfer across radically different encodings
+- **Impact**: Suggests byte models are more powerful than previously thought
+- **Applications**: Train once on cheap format (JPEG), deploy on any format
+
+**Scenario B: Zero Transfer (PNG acc ≈ random)**
+- **Implication**: Byte models are **format-specific**, overfitted to encoding schemes
+- **Contribution**: Fundamental limitation of byte-level approaches
+- **Impact**: Hybrid pixel-byte models needed for format robustness
+- **Applications**: Must train on all formats users will encounter
+
+**Scenario C: Partial Transfer (PNG acc = 40-60%)**
+- **Implication**: Some byte patterns transfer, others don't
+- **Contribution**: Identify which patterns are content vs. format specific
+- **Impact**: Design better architectures that separate format and content
+- **Applications**: Format adaptation layers, domain adaptation techniques
+
+#### Technical Insight: Why Formats Are Radically Different
+
+Same cat photo encoded as JPEG vs PNG uses **completely different byte sequences**:
+
+| Aspect | JPEG (Quality 75) | PNG (Lossless) |
+|--------|------------------|----------------|
+| Compression | DCT + Huffman + Quantization | Deflate (LZSS + Huffman) |
+| Color Space | YCbCr (luminance + chroma) | RGB channels |
+| Structure | Progressive scans, restart markers | Scanline filtering, IDAT chunks |
+| Byte Patterns | Non-aligned Huffman codes | Byte-aligned chunk structure |
+| Headers | JFIF/EXIF metadata | PNG signature + critical chunks |
+| File Size (32×32 CIFAR) | ~1-3 KB | ~3-8 KB |
+
+**Key Point**: These are as different as English and French text, yet encode identical visual semantics.
+
+#### Minimal Compute Experiment Design
+
+```python
+# Total compute: ~20 GPU hours on RTX 3090
+
+# 1. Encode CIFAR-10 in 4 formats (1 hour)
+formats = ['jpeg_q75', 'png', 'webp', 'bmp']
+for image in cifar10:
+    save_as_jpeg(image, quality=75)
+    save_as_png(image)
+    save_as_webp(image)
+    save_as_bmp(image)
+
+# 2. Train ONLY on JPEG (12-15 hours)
+model = ByteFormer(max_bytes=8192, embed_dim=192, depth=6)
+model.train(cifar10_jpeg_train)  # 50K images, JPEG only
+
+# 3. Zero-shot test on all formats (< 1 hour)
+results = {
+    'jpeg': model.test(cifar10_jpeg_test),   # ~80-85% expected (in-distribution)
+    'png': model.test(cifar10_png_test),     # ??? (NOVEL)
+    'webp': model.test(cifar10_webp_test),   # ??? (NOVEL)
+    'bmp': model.test(cifar10_bmp_test),     # ??? (NOVEL - uncompressed baseline)
+}
+
+# 4. Analysis
+- Plot accuracy vs format
+- Analyze attention patterns: Do they align to semantic content or format structure?
+- Failure analysis: Which classes transfer, which don't?
+```
+
+**Expected Results (All Publishable)**:
+- **High transfer**: CVPR/ICCV paper (major finding)
+- **Zero transfer**: NeurIPS paper (important negative result)
+- **Partial transfer**: Both conferences (analysis of what transfers)
+
+#### Related Findings from Literature
+
+**Compression Robustness (Different from Format Transfer)**:
+- CNNs robust to JPEG quality ≥ 10 (Ehrlich et al., ICCV 2021)
+- Fine-tuning with JPEG augmentation mitigates compression artifacts
+- **But**: This studies JPEG-Q50 vs JPEG-Q95, not JPEG vs PNG
+
+**Cross-Modal Transfer (bGPT)**:
+- Positive transfer: ImageNet bytes → Audio tasks (+5-10% vs random init)
+- Negative transfer: Text bytes → Audio/Images (text has distinct patterns)
+- **Implication for formats**: If image→audio transfers, maybe JPEG→PNG could too
+
+**Domain Shift**:
+- Camera changes, lighting, background cause distribution shift
+- No prior work treats file format as a domain
+- **Gap**: Format shift is a type of distribution shift, unstudied in byte models
+
+#### Novelty Summary
+
+✅ **Never tested**: No published work on cross-format zero-shot transfer in byte models
+✅ **Clear hypothesis**: Format-agnostic vs format-specific representations
+✅ **Minimal compute**: 20 GPU hours on CIFAR-10
+✅ **All outcomes interesting**: Success OR failure is publishable
+✅ **Fast iteration**: Results in 2-3 days
+✅ **Addresses fundamental question**: Do byte models learn content or format?
+
+**Recommendation**: **Prioritize this experiment** as the primary novel contribution of this research.
+
+---
+
+### 6.2 Systematic Comparisons Needed
 - **Same dataset, same budget**: Pixel vs. byte-level models
-- **Multiple formats**: Train on one, test on others (generalization)
+- **Multiple formats**: Train on one, test on others (generalization) ← **UPDATED: See 6.1 above**
 - **Multiple tasks**: Classification, segmentation, detection
 - **Multiple scales**: CIFAR (small) to ImageNet (large)
 
-### 6.2 Architectural Exploration
+### 6.3 Architectural Exploration
 - **State space models** (Mamba, S4): Better for long sequences?
 - **Hybrid models**: Combine byte-level and pixel-level representations
 - **Hierarchical processing**: Parse file structure explicitly
 - **Learned compression**: Can models learn to compress byte sequences optimally?
 
-### 6.3 Format Robustness
+### 6.4 Format Robustness
 - **Mixed-format training**: Does it improve generalization?
 - **Format conversion**: Byte-level models for transcoding?
 - **Corruption robustness**: Random byte flips, truncation, format errors
+- **Zero-shot format transfer**: See Section 6.1 for primary novel direction
 
-### 6.4 Efficiency Improvements
+### 6.5 Efficiency Improvements
 - **Better downsampling**: Content-aware vs. fixed-stride
 - **Sparse attention**: Which byte positions matter most?
 - **Knowledge distillation**: Train large byte model, distill to smaller pixel model
 
-### 6.5 Practical Applications
+### 6.6 Practical Applications
 - **Unified multimodal models**: Text + images in single byte vocabulary
 - **Privacy-preserving inference**: Process without full decompression
 - **Compression learning**: Models that understand and generate compressed formats
@@ -313,32 +457,59 @@ After 20K fine-tuning steps on ~3M images:
 
 ### 7.4 Concrete Testable Hypotheses
 
-#### Hypothesis 1: Format Generalization
-**H1**: Models trained on mixed formats (JPEG + PNG) will generalize better to unseen formats than single-format training.
+#### **Hypothesis 1: Format-Agnostic Zero-Shot Transfer (PRIMARY NOVEL HYPOTHESIS)**
+**H1**: A byte-level model trained on JPEG will achieve **>50% of its in-distribution accuracy** when tested zero-shot on PNG/WebP/BMP formats.
+
+**Experiment** (Detailed in Section 6.1):
+- Train ByteFormer-CIFAR on JPEG-only (50K images)
+- Test zero-shot on PNG, WebP, BMP (10K images each)
+- Baseline: Pixel-level CNN for comparison
+- Metric: Accuracy ratio (out-of-format / in-format)
+
+**Success Criteria**:
+- **Strong transfer**: PNG accuracy ≥ 70% of JPEG accuracy → Major positive result
+- **Partial transfer**: PNG accuracy = 40-70% of JPEG → Analyze what transfers
+- **Zero transfer**: PNG accuracy ≤ 30% of JPEG → Important negative result (format-specific learning)
+
+**Compute**: 20 GPU hours total
+**Timeline**: 3-4 days
+
+---
+
+#### Hypothesis 2: Mixed-Format Training Improves Generalization
+**H2**: Models trained on mixed formats (JPEG + PNG) will generalize better to unseen formats (WebP, BMP) than single-format training.
 
 **Experiment**:
-- Train 3 models: JPEG-only, PNG-only, Mixed
-- Test on JPEG, PNG, WebP, BMP
-- Metric: Accuracy and cross-format transfer
+- Train 3 models: JPEG-only, PNG-only, Mixed (50% JPEG + 50% PNG)
+- Test on WebP and BMP (unseen formats)
+- Metric: Zero-shot accuracy on WebP/BMP
 
-#### Hypothesis 2: Robustness to Byte Corruption
-**H2**: Byte-level models will be more robust to file corruption (random byte flips) than pixel-level models are to pixel corruption.
+**Prediction**: Mixed > JPEG-only and Mixed > PNG-only
+
+---
+
+#### Hypothesis 3: Robustness to Byte Corruption
+**H3**: Byte-level models will be more robust to file corruption (random byte flips) than pixel-level models are to pixel corruption.
 
 **Experiment**:
 - Compare byte-model (byte corruption) vs. pixel-model (pixel corruption)
 - Vary corruption rate: 0.1%, 1%, 5%, 10%
 - Metric: Accuracy degradation curve
 
-#### Hypothesis 3: Efficient Downsampling
-**H3**: Content-aware downsampling (entropy-based) will outperform fixed-stride downsampling for byte sequences.
+---
+
+#### Hypothesis 4: Efficient Downsampling
+**H4**: Content-aware downsampling (entropy-based) will outperform fixed-stride downsampling for byte sequences.
 
 **Experiment**:
-- Compare fixed-stride vs. entropy-based patching
+- Compare fixed-stride vs. entropy-based patching (inspired by BLT)
 - Control for compute budget
 - Metric: Accuracy per FLOP
 
-#### Hypothesis 4: Hybrid Models
-**H4**: Models using both byte-level and pixel-level representations will outperform either alone.
+---
+
+#### Hypothesis 5: Hybrid Models
+**H5**: Models using both byte-level and pixel-level representations will outperform either alone.
 
 **Experiment**:
 - Baseline: Pixel-only, Byte-only
@@ -376,20 +547,28 @@ After 20K fine-tuning steps on ~3M images:
 5. ✅ Format matters (TIFF > JPEG for accuracy)
 
 ### What We Don't Know
-1. ❓ How do byte-level models perform on dense prediction (segmentation, detection)?
-2. ❓ Can mixed-format training improve robustness?
-3. ❓ What's the optimal downsampling strategy?
-4. ❓ How do hybrid (byte + pixel) models compare?
-5. ❓ Can byte-level models match pixel-level efficiency?
+1. ❓ **Do byte models learn format-agnostic or format-specific representations?** ← **PRIMARY NOVEL QUESTION**
+2. ❓ Can models transfer zero-shot across formats (JPEG → PNG)?
+3. ❓ How do byte-level models perform on dense prediction (segmentation, detection)?
+4. ❓ Can mixed-format training improve robustness?
+5. ❓ What's the optimal downsampling strategy?
+6. ❓ How do hybrid (byte + pixel) models compare?
+7. ❓ Can byte-level models match pixel-level efficiency?
 
 ### Research Opportunity
-**Systematic comparison of byte-level vs. pixel-level encodings** across:
+**PRIMARY CONTRIBUTION: Format-Agnostic Zero-Shot Transfer**
+- **Never tested**: No prior work on cross-format zero-shot transfer
+- **Minimal compute**: 20 GPU hours on CIFAR-10
+- **All outcomes publishable**: Success OR failure is a significant finding
+- **Addresses fundamental question**: Content vs. format learning
+
+**SECONDARY: Systematic comparison of byte-level vs. pixel-level encodings** across:
 - Multiple datasets (CIFAR, ImageNet)
 - Multiple tasks (classification, maybe reconstruction)
-- Multiple formats (JPEG, PNG)
+- Multiple formats (JPEG, PNG, WebP, BMP)
 - Controlled compute budgets
 
-This project addresses gaps 1-4 above.
+This project primarily addresses question 1-2 (novel), with secondary focus on questions 3-7.
 
 ---
 
@@ -415,25 +594,36 @@ This project addresses gaps 1-4 above.
 ## 11. Novelty of This Project
 
 ### What's New Here
-1. **Systematic comparison**: Controlled experiments (same dataset, budget)
-2. **Multiple formats**: Test JPEG, PNG, maybe WebP
-3. **Robustness analysis**: Byte corruption vs. pixel corruption
-4. **Hybrid approaches**: Combine byte and pixel representations
-5. **Clear documentation**: Open research process, reproducible results
+1. **🔥 PRIMARY NOVEL CONTRIBUTION: Format-Agnostic Zero-Shot Transfer**
+   - **First systematic study** of cross-format transfer in byte-level models
+   - **Untested question**: Do byte models learn content or format?
+   - **All outcomes publishable**: High/partial/zero transfer all significant findings
+   - **Minimal compute**: Feasible with 20 GPU hours on CIFAR-10
+
+2. **SECONDARY CONTRIBUTIONS**:
+   - **Systematic comparison**: Controlled experiments (same dataset, budget)
+   - **Multiple formats**: Test JPEG, PNG, WebP, BMP comprehensively
+   - **Robustness analysis**: Byte corruption vs. pixel corruption
+   - **Hybrid approaches**: Combine byte and pixel representations
+   - **Clear documentation**: Open research process, reproducible results
 
 ### Why It Matters
-- ByteFormer focused on single-format ImageNet
-- Limited exploration of format generalization
-- No systematic efficiency analysis
-- Hybrid approaches unexplored
-- Recent (2023-2025) means much is still unknown
+- **ByteFormer** (2023): Trained separate models per format, **no cross-format testing**
+- **EvaByte** (2025): Uses JPEG only, **no format generalization study**
+- **Community evidence**: 20% accuracy drop reported when training on JPEG, testing on PNG (uncontrolled)
+- **bGPT** (2024): Showed cross-modal transfer (images→audio), suggests cross-format might work
+- **Domain shift literature**: Extensive work on camera/compression changes, **but not format as domain**
+- **ByteNet** (2024): Classifies file types, doesn't test transfer across types
 
-**This project fills gaps while building on strong foundations.**
+**Gap**: No published work has asked "Can a byte model trained on JPEG classify PNG images?"
+
+**This project addresses this fundamental question with minimal compute.**
 
 ---
 
 ## References
 
+### Core Byte-Level Models
 1. Buch, S., et al. (2023). Bytes Are All You Need: Transformers Operating Directly On File Bytes. arXiv:2306.00238
 2. EvaByte Team (2025). EvaByte: Efficient Byte-level Language Models at Scale. https://hkunlp.github.io/blog/2025/evabyte/
 3. Meta AI (2024). Byte Latent Transformer: Patches Scale Better Than Tokens. arXiv:2412.09871
@@ -441,6 +631,21 @@ This project addresses gaps 1-4 above.
 5. Jaegle, A., et al. (2021). Perceiver IO: A General Architecture for Structured Inputs & Outputs. arXiv:2107.14795
 6. Xue, L., et al. (2021). ByT5: Towards a Token-Free Future with Pre-trained Byte-to-Byte Models. arXiv:2105.13626
 
+### Cross-Modal Transfer and Domain Shift
+7. Microsoft Research (Feb 2024). Beyond Language Models: Byte Models are Digital World Simulators (bGPT). arXiv:2402.19155
+8. ByteNet Team (Oct 2024). ByteNet: Rethinking Multimedia File Fragment Classification through Visual Perspectives. arXiv:2410.20855
+9. Hendrycks, D., et al. (2020). Measuring Robustness to Natural Distribution Shifts in Image Classification. NeurIPS 2020
+10. Ehrlich, M., et al. (2021). Analyzing and Mitigating JPEG Compression Defects in Deep Learning. ICCV 2021 Workshop
+
+### Related Work
+11. Dosovitskiy, A., et al. (2020). An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale (ViT). ICLR 2021
+12. Liu, Z., et al. (2021). Swin Transformer: Hierarchical Vision Transformer using Shifted Windows. ICCV 2021
+13. Ballé, J., et al. (2018). Variational Image Compression with a Scale Hyperprior. ICLR 2018
+
+### Community Evidence
+14. Stack Overflow (2017). "Does the image format (png, jpg, gif) affect how an image recognition neural net is trained?" https://stats.stackexchange.com/questions/285931
+15. Stack Overflow (2017). "Will jpeg compression affect training and classification using Convolutional Neural Networks?" https://stackoverflow.com/questions/47497352
+
 ---
 
-*Last updated: 2025-11-19*
+*Last updated: 2025-11-22 (Added format-agnostic zero-shot transfer research)*
