@@ -79,12 +79,20 @@ class UnknownTokenModel:
         print(f"  Model parameters: {self.count_parameters():,}")
         print(f"  UNKNOWN token ID: {self.unknown_token_id}")
 
+    def _setup_tokenizer(self, tokenizer: PreTrainedTokenizer) -> PreTrainedTokenizer:
+        """Setup tokenizer with pad token if needed."""
+        if tokenizer.pad_token is None:
+            print("  Setting pad_token = eos_token")
+            tokenizer.pad_token = tokenizer.eos_token
+        return tokenizer
+
     def _load_model(self) -> tuple[PreTrainedTokenizer, PreTrainedModel]:
         """Load model and tokenizer with fallback."""
         # Try primary model
         try:
             print(f"Loading primary model: {self.model_name}")
             tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            tokenizer = self._setup_tokenizer(tokenizer)
             model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 torch_dtype=self.torch_dtype,
@@ -100,6 +108,7 @@ class UnknownTokenModel:
             # Try backup model
             try:
                 tokenizer = AutoTokenizer.from_pretrained(self.backup_model_name)
+                tokenizer = self._setup_tokenizer(tokenizer)
                 model = AutoModelForCausalLM.from_pretrained(
                     self.backup_model_name,
                     torch_dtype=self.torch_dtype,
@@ -170,6 +179,7 @@ class UnknownTokenModel:
 
         print(f"Loading model from {model_dir}...")
         self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
+        self.tokenizer = self._setup_tokenizer(self.tokenizer)
         self.model = AutoModelForCausalLM.from_pretrained(
             model_dir,
             torch_dtype=self.torch_dtype,
