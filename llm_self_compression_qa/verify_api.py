@@ -35,7 +35,10 @@ if not api_key:
     print()
     sys.exit(1)
 
-print(f"✅ API key found: {api_key[:15]}...{api_key[-4:]}")
+if len(api_key) > 20:
+    print(f"✅ API key found: {api_key[:15]}...{api_key[-4:]}")
+else:
+    print(f"✅ API key found: {api_key[:4]}...{api_key[-2:]}")
 print()
 
 # Try importing OpenAI
