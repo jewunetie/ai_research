@@ -1,0 +1,54 @@
+# Sequential Phased on CIFAR-10
+# Test scalability to color images and harder dataset
+
+experiment:
+  name: "cifar10_sequential_phased"
+  approach: "sequential_phased"
+  seed: 42
+  device: "auto"
+
+data:
+  dataset: "cifar10"
+  batch_size: 256  # Smaller batch for 32x32 color images
+  num_workers: 4
+  normalize: true
+
+model:
+  architecture: "hybrid_ff_bp"
+  input_dim: 3072  # 32x32x3
+  ff_hidden_dims: [1000, 1000, 1000]  # Larger for color images
+  num_classes: 10
+  ff_threshold: 2.0
+
+training:
+  approach: "sequential_phased"
+
+  phase1:
+    epochs: 150  # More epochs for harder dataset
+    learning_rate: 0.03
+    threshold: 2.0
+    negative_strategy: "random_label"
+
+  phase2a:
+    epochs: 75
+    learning_rate: 0.001
+    optimizer: "adam"
+    freeze_ff: true
+
+  phase2b:
+    enabled: true
+    epochs: 75
+    learning_rate: 0.0001
+    optimizer: "adam"
+
+evaluation:
+  save_checkpoints: true
+  checkpoint_freq: 25
+  log_interval: 10
+  compute_linear_probing: true
+  save_tsne: true
+
+logging:
+  use_tensorboard: true
+  tensorboard_dir: "results/tensorboard"
+  save_dir: "results/cifar10_sequential_phased"
