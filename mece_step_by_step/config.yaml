@@ -1,0 +1,35 @@
+# MECE Step by Step Reasoning - Configuration
+# Optimized for M4 Max MacBook Pro
+
+model:
+  name: "Qwen/Qwen3-0.6B-Instruct"  # Instruction-tuned version
+  framework: "mlx"  # or "llama.cpp" or "transformers"
+  device: "mps"  # Metal Performance Shaders for M4
+  max_tokens: 512
+  temperature: 0.7
+  top_p: 0.9
+  thinking_mode: true  # Enable thinking mode for all generations
+
+dataset:
+  path: "data/math_case_analysis.json"
+  categories:
+    - absolute_value
+    - piecewise_functions
+    - sign_analysis
+    - range_based
+
+evaluation:
+  prompt_types:
+    - baseline
+    - mece
+  random_seed: 42
+  batch_size: 1  # Sequential for now
+
+metrics:
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  similarity_threshold: 0.8  # For overlap detection
+
+output:
+  results_dir: "data/results"
+  save_responses: true
+  save_metrics: true
