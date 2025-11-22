@@ -10,9 +10,14 @@ This document provides precise specifications for generating synthetic gibberish
 
 ### Global Parameters
 
-- **Total Training Dataset Size**: 100K examples (adjustable based on compute)
-  - 90% FineWeb-Edu (90K examples)
-  - 10% Gibberish (10K examples) - **initial ratio, tune to 15% if needed**
+- **Training Set Size**: 100K examples (adjustable based on compute)
+  - 90% FineWeb-Edu (90K examples for training)
+  - 10% Gibberish (10K examples for training) - **initial ratio, tune to 15% if needed**
+
+- **Total FineWeb-Edu Required**: 105K examples
+  - 90K for training
+  - 10K for validation (held-out)
+  - 5K for test (held-out)
 
 - **Gibberish Type Distribution** (within 10K gibberish examples):
   - Type 1 (Repetitive): 25% (2,500 examples)

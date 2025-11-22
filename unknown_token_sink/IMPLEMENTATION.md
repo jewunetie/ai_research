@@ -811,7 +811,7 @@ uv venv && source .venv/bin/activate
 uv add torch transformers datasets accelerate tensorboard
 
 # Phase 1: Data
-python scripts/generate_all_data.sh
+bash scripts/generate_all_data.sh
 
 # Phase 2: Model
 python src/models/load_model.py
