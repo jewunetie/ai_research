@@ -391,11 +391,11 @@ The research reveals this specific model (conscious labor-for-content-access) ha
 - **Finding**: Collaborative prompts achieve high human-AI agreement comparable to human-human
 - **Link**: https://arxiv.org/abs/2409.14223
 
-### 8. CAPTCHA Research (Reframed for Task UX, Not Security)
+### 8. Task Design Lessons from Gamified Microtask Research
 
-*Note: Including CAPTCHA research for task design and UX insights, NOT for bot detection*
+*Note: Learning from CAPTCHA and Games With A Purpose (GWAP) research for task UX insights only, NOT for bot detection or security purposes*
 
-#### Task Design Lessons from CAPTCHA
+#### Lessons from CAPTCHA and GWAP Systems
 
 **Games With A Purpose (GWAP)**
 - **Author**: Luis von Ahn
