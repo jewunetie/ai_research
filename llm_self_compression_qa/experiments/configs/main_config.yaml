@@ -1,0 +1,87 @@
+experiment:
+  name: "main_self_compression"
+  description: "Main experiment testing LLM self-compression for QA (100 documents)"
+  num_documents: 100
+  dataset: "cnn_dailymail"
+  dataset_split: "test"
+  seed: 42
+  questions_per_document: 10
+
+model:
+  # Primary model - GPT-5.1 Instant (November 2025)
+  name: "gpt-5.1-chat-latest"
+  # Alternative models (uncomment to use):
+  # name: "gpt-5.1-thinking"  # Deep reasoning variant
+  # name: "gpt-5"  # Base GPT-5
+  # name: "gpt-4o"  # Cost-effective fallback
+
+  temperature: 0.0
+  seed: 42
+  reasoning_effort: "none"  # Options: "none", "minimal", "medium", "high"
+
+compression:
+  token_limit: 1500
+
+  # Test multiple compression variants
+  variants:
+    - name: "self_compression"
+      description: "Original self-compression prompt"
+      prompt_key: "SELF_COMPRESSION_PROMPT"
+
+    - name: "human_readable"
+      description: "Human-readable summary baseline"
+      prompt_key: "HUMAN_READABLE_SUMMARY_PROMPT"
+
+baselines:
+  # Which baselines to run
+  enabled:
+    - "full_context"      # Upper bound (no compression)
+    - "no_context"        # Lower bound (empty context)
+    - "random_tokens"     # Random token selection
+
+evaluation:
+  # Metrics to compute
+  metrics:
+    - "exact_match"
+    - "f1"
+    - "semantic_similarity"
+
+output:
+  # Where to save results
+  results_dir: "results/main"
+
+  # Save intermediate results every N documents
+  checkpoint_interval: 10
+
+  # Save individual compressed outputs
+  save_compressions: true
+
+  # Save all QA pairs and answers
+  save_qa_details: true
+
+cost_tracking:
+  # Enable cost estimation
+  enabled: true
+
+  # Model pricing (tokens per dollar)
+  # NOTE: Update with actual GPT-5.1 pricing when available
+  pricing:
+    "gpt-5.1-chat-latest":
+      input_per_1k: 0.01   # Placeholder - verify actual pricing
+      output_per_1k: 0.03  # Placeholder - verify actual pricing
+    "gpt-4o":
+      input_per_1k: 0.0025
+      output_per_1k: 0.01
+    "gpt-3.5-turbo":
+      input_per_1k: 0.0005
+      output_per_1k: 0.0015
+
+progress:
+  # Show progress bars
+  show_progress: true
+
+  # Print detailed logs
+  verbose: true
+
+  # Estimate time remaining
+  show_eta: true

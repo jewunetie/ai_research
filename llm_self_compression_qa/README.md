@@ -35,10 +35,27 @@ python verify_api.py
 
 This will test whether the Responses API (March 2025) is available or if you need to use Chat Completions API.
 
-### 4. Run Pilot Experiment
+### 4. Run Experiments
 
+**Quick Pilot (10 documents)**:
+```bash
+python experiments/main/run_main.py --config experiments/configs/pilot_config.yaml
+```
+
+**Main Experiment (100 documents)**:
+```bash
+python experiments/main/run_main.py --config experiments/configs/main_config.yaml
+```
+
+**Legacy Pilot Script**:
 ```bash
 python scripts/pilot.py
+```
+
+### 5. Analyze Results
+
+```bash
+python experiments/main/analyze_main.py results/main/main_*.json
 ```
 
 ## Project Structure
@@ -50,8 +67,12 @@ llm_self_compression_qa/
 │   ├── compression/      # Compression pipeline
 │   ├── data/            # Data loading and processing
 │   ├── evaluation/      # Question generation and answering
-│   └── baselines/       # Baseline implementations
-├── scripts/             # Experiment scripts
+│   ├── baselines/       # Baseline implementations
+│   └── utils/           # Configuration and cost tracking
+├── experiments/
+│   ├── configs/         # YAML experiment configurations
+│   └── main/           # Experiment runners and analysis
+├── scripts/             # Legacy pilot script
 ├── results/             # Experimental results
 └── docs/               # Documentation
 ```

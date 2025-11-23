@@ -14,8 +14,9 @@ dependencies = [
     "matplotlib",
     "seaborn",
     "scipy",
-    "pyyaml",
+    "pyyaml",  # For YAML configuration files
     "python-dotenv",
+    "tqdm",  # For progress bars in experiments
 ]
 
 [project.optional-dependencies]

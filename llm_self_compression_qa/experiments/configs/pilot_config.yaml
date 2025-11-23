@@ -1,0 +1,53 @@
+experiment:
+  name: "pilot_self_compression"
+  description: "Pilot experiment for testing pipeline (10 documents)"
+  num_documents: 10
+  dataset: "cnn_dailymail"
+  dataset_split: "test"
+  seed: 42
+  questions_per_document: 10
+
+model:
+  name: "gpt-5.1-chat-latest"
+  temperature: 0.0
+  seed: 42
+  reasoning_effort: "none"
+
+compression:
+  token_limit: 1500
+  variants:
+    - name: "self_compression"
+      description: "Self-compression with non-human-readable encoding"
+      prompt_key: "SELF_COMPRESSION_PROMPT"
+
+baselines:
+  enabled:
+    - "full_context"
+    - "no_context"
+
+evaluation:
+  metrics:
+    - "exact_match"
+    - "f1"
+    - "semantic_similarity"
+
+output:
+  results_dir: "results/pilot"
+  checkpoint_interval: 5
+  save_compressions: true
+  save_qa_details: true
+
+cost_tracking:
+  enabled: true
+  pricing:
+    "gpt-5.1-chat-latest":
+      input_per_1k: 0.01
+      output_per_1k: 0.03
+    "gpt-4o":
+      input_per_1k: 0.0025
+      output_per_1k: 0.01
+
+progress:
+  show_progress: true
+  verbose: true
+  show_eta: true
