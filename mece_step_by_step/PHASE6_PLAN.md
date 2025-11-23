@@ -145,23 +145,37 @@ After running both separately, examine:
 
 **Quality checks:**
 ```bash
-# Count results
-python -c "import json; print(len(json.load(open('results/phase6/baseline_results_*.json'))))"
+# Count results (replace TIMESTAMP with actual timestamp from filename)
+python -c "import json; print(len(json.load(open('results/phase6/baseline_results_TIMESTAMP.json'))))"
+
+# OR use glob to find the latest:
+python -c "
+import json, glob
+files = sorted(glob.glob('results/phase6/baseline_results_*.json'))
+if files:
+    print(f'Found {len(files)} result file(s)')
+    results = json.load(open(files[-1]))  # Latest file
+    print(f'Contains {len(results)} results')
+"
 
 # Check for errors
 python -c "
-import json
-results = json.load(open('results/phase6/baseline_results_*.json'))
-errors = [r for r in results if 'error' in str(r['metrics'])]
-print(f'Results with errors: {len(errors)}')
+import json, glob
+files = sorted(glob.glob('results/phase6/baseline_results_*.json'))
+if files:
+    results = json.load(open(files[-1]))
+    errors = [r for r in results if 'error' in str(r['metrics'])]
+    print(f'Results with errors: {len(errors)}')
 "
 
 # Average scores
 python -c "
-import json
-results = json.load(open('results/phase6/baseline_results_*.json'))
-avg_acc = sum(r['metrics']['accuracy']['f1_score'] for r in results) / len(results)
-print(f'Average accuracy: {avg_acc:.3f}')
+import json, glob
+files = sorted(glob.glob('results/phase6/baseline_results_*.json'))
+if files:
+    results = json.load(open(files[-1]))
+    avg_acc = sum(r['metrics']['accuracy']['f1_score'] for r in results) / len(results)
+    print(f'Average accuracy: {avg_acc:.3f}')
 "
 ```
 

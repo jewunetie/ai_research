@@ -204,10 +204,11 @@ Therefore, the solutions are x = 8 and x = -2"""
 
 
 def test_end_to_end_evaluation(model):
-    """Test end-to-end evaluation on 3 problems."""
+    """Test end-to-end evaluation on 3 problems (both conditions)."""
     print("\n" + "=" * 70)
-    print("STEP 5: Testing End-to-End Evaluation (3 problems)")
+    print("STEP 5: Testing End-to-End Evaluation")
     print("=" * 70)
+    print("Testing both BASELINE and MECE conditions on 3 problems total\n")
 
     try:
         from src.evaluation import MECEEvaluator
@@ -224,45 +225,83 @@ def test_end_to_end_evaluation(model):
         evaluator = MECEEvaluator(
             model_inference=model,
             mece_version=1,
-            verbose=True,
+            verbose=False,  # Less verbose for cleaner output
             output_dir=Path("results/test")
         )
 
-        print(f"\nEvaluating {len(test_problems)} problems with BASELINE condition...\n")
+        all_results = {}
 
-        # Evaluate with baseline
+        # Test BASELINE condition (2 problems)
+        print("Testing BASELINE condition (2 problems)...")
+
         baseline_results = []
-        for i, problem in enumerate(test_problems, 1):
-            print(f"\n{'='*70}")
-            print(f"Problem {i}/{len(test_problems)}: {problem['id']}")
-            print(f"{'='*70}")
+        for i, problem in enumerate(test_problems[:2], 1):
+            print(f"  Problem {i}/2: {problem['id']}", end=" ")
 
             result = evaluator.evaluate_problem(problem, condition="baseline")
             baseline_results.append(result)
 
-            # Show results
-            print(f"\n✅ Evaluation complete:")
-            print(f"   Steps detected: {result['n_steps']}")
-            print(f"   Accuracy F1: {result['metrics']['accuracy']['f1_score']:.3f}")
+            # Show inline results
+            acc = result['metrics']['accuracy']['f1_score']
+            print(f"→ Steps: {result['n_steps']}, Acc: {acc:.2f}", end="")
 
             if 'mutual_exclusivity' in result['metrics'] and 'error' not in result['metrics']['mutual_exclusivity']:
-                print(f"   ME Score: {result['metrics']['mutual_exclusivity']['overall_me_score']:.3f}")
+                me = result['metrics']['mutual_exclusivity']['overall_me_score']
+                print(f", ME: {me:.2f}", end="")
 
             if 'collective_exhaustiveness' in result['metrics'] and 'error' not in result['metrics']['collective_exhaustiveness']:
-                print(f"   CE Score: {result['metrics']['collective_exhaustiveness']['overall_ce_score']:.3f}")
+                ce = result['metrics']['collective_exhaustiveness']['overall_ce_score']
+                print(f", CE: {ce:.2f}", end="")
+
+            print(" ✅")
+
+        all_results['baseline'] = baseline_results
+
+        # Test MECE condition (1 problem)
+        print("\nTesting MECE condition (1 problem)...")
+
+        mece_results = []
+        problem = test_problems[2]  # Third problem
+        print(f"  Problem 1/1: {problem['id']}", end=" ")
+
+        result = evaluator.evaluate_problem(problem, condition="mece")
+        mece_results.append(result)
+
+        # Show inline results
+        acc = result['metrics']['accuracy']['f1_score']
+        print(f"→ Steps: {result['n_steps']}, Acc: {acc:.2f}", end="")
+
+        if 'mutual_exclusivity' in result['metrics'] and 'error' not in result['metrics']['mutual_exclusivity']:
+            me = result['metrics']['mutual_exclusivity']['overall_me_score']
+            print(f", ME: {me:.2f}", end="")
+
+        if 'collective_exhaustiveness' in result['metrics'] and 'error' not in result['metrics']['collective_exhaustiveness']:
+            ce = result['metrics']['collective_exhaustiveness']['overall_ce_score']
+            print(f", CE: {ce:.2f}", end="")
+
+        print(" ✅")
+
+        all_results['mece'] = mece_results
 
         # Summary
         print(f"\n{'='*70}")
         print("TEST EVALUATION SUMMARY")
         print(f"{'='*70}")
 
-        avg_accuracy = sum(r['metrics']['accuracy']['f1_score'] for r in baseline_results) / len(baseline_results)
-        print(f"Average Accuracy F1: {avg_accuracy:.3f}")
+        baseline_avg_acc = sum(r['metrics']['accuracy']['f1_score'] for r in baseline_results) / len(baseline_results)
+        mece_avg_acc = sum(r['metrics']['accuracy']['f1_score'] for r in mece_results) / len(mece_results)
 
-        avg_latency = sum(r['latency_ms'] for r in baseline_results) / len(baseline_results)
-        print(f"Average Latency: {avg_latency:.0f}ms")
+        print(f"Baseline (2 problems): Avg Accuracy = {baseline_avg_acc:.3f}")
 
-        print(f"\n✅ End-to-end evaluation successful!")
+        baseline_avg_latency = sum(r['latency_ms'] for r in baseline_results) / len(baseline_results)
+        print(f"                        Avg Latency = {baseline_avg_latency:.0f}ms")
+
+        print(f"MECE (1 problem):      Avg Accuracy = {mece_avg_acc:.3f}")
+
+        mece_avg_latency = sum(r['latency_ms'] for r in mece_results) / len(mece_results)
+        print(f"                        Avg Latency = {mece_avg_latency:.0f}ms")
+
+        print(f"\n✅ End-to-end evaluation successful for BOTH conditions!")
         return True
 
     except Exception as e:
