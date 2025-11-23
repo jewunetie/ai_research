@@ -407,6 +407,46 @@ class Mechanism(ABC):
     def requires_predictions(self) -> bool:
         """Does this mechanism need agents to predict others' reports?"""
         pass
+
+    def _group_by_task(self, reports: list[Report]) -> dict[int, list[Report]]:
+        """Helper: Group reports by task_id.
+
+        Returns:
+            dict mapping task_id -> list of reports for that task
+        """
+        grouped = {}
+        for report in reports:
+            if report.task_id not in grouped:
+                grouped[report.task_id] = []
+            grouped[report.task_id].append(report)
+        return grouped
+
+    def _to_matrix(self, reports: list[Report]) -> tuple[np.ndarray, list[int], list[int]]:
+        """Helper: Convert reports to matrix format for EM algorithms.
+
+        Returns:
+            reports_matrix: shape (n_agents, n_tasks), value = label or -1 if not labeled
+            agent_ids: list of agent IDs corresponding to rows
+            task_ids: list of task IDs corresponding to columns
+        """
+        # Get unique agents and tasks
+        agent_ids = sorted(set(r.agent_id for r in reports))
+        task_ids = sorted(set(r.task_id for r in reports))
+
+        # Create mapping
+        agent_to_idx = {aid: i for i, aid in enumerate(agent_ids)}
+        task_to_idx = {tid: i for i, tid in enumerate(task_ids)}
+
+        # Initialize matrix with -1 (not labeled)
+        matrix = np.full((len(agent_ids), len(task_ids)), -1, dtype=int)
+
+        # Fill in reports
+        for report in reports:
+            i = agent_to_idx[report.agent_id]
+            j = task_to_idx[report.task_id]
+            matrix[i, j] = report.report
+
+        return matrix, agent_ids, task_ids
 ```
 
 ### 3.4 GameInstance
@@ -430,6 +470,7 @@ class ExperimentConfig:
     num_tasks: int
     num_agents: int
     agent_mix: dict[str, float]  # type -> proportion
+    agent_params: dict[str, dict] | None = None  # type -> {ability, cost, etc.}
     mechanism_name: str
     mechanism_params: dict
     task_difficulty: float
@@ -615,13 +656,35 @@ class StrategicAgent(Agent):
         """Compute expected payment given my report and beliefs about others.
 
         This is mechanism-specific and requires knowledge of payment rule.
-        """
-        # Placeholder: mechanism-specific implementation needed
-        # For majority voting: payment is fixed
-        # For peer prediction: payment depends on agreement with others
-        # For Dawid-Skene: payment proportional to inferred quality
 
-        return mechanism.compute_expected_payment(my_report, others_dist)
+        Phase 1 Implementation: Simplified heuristics for each mechanism type.
+        Future: Add compute_expected_payment() method to Mechanism base class.
+        """
+        mechanism_name = mechanism.__class__.__name__
+
+        if mechanism_name == "MajorityVoting":
+            # Fixed payment regardless of report
+            return mechanism.payment_per_task
+
+        elif mechanism_name == "OutputAgreement":
+            # Expected payment = P(others agree) * agreement_payment
+            prob_agreement = others_dist.get(my_report, 0.5)
+            return prob_agreement * mechanism.agreement_payment
+
+        elif mechanism_name == "DawidSkene":
+            # Simplified: assume quality-weighted payment
+            # Strategic agent assumes they'll be classified as high-quality
+            # This is optimistic but reasonable as first approximation
+            return mechanism.payment_per_task * (1 - mechanism.quality_weight + mechanism.quality_weight * 0.8)
+
+        elif mechanism_name == "RBTS":
+            # For RBTS, payment depends on "surprisingly common" scoring
+            # Simplified: assume moderate bonus for reporting
+            return mechanism.base_payment + mechanism.bonus_scale * 0.5
+
+        else:
+            # Default: assume fixed payment
+            return 1.0
 ```
 
 **Complexity Note**:
@@ -716,10 +779,11 @@ class MajorityVoting(Mechanism):
             votes = [r.report for r in task_reports]
             aggregated_labels[task_id] = 1 if sum(votes) > len(votes)/2 else 0
 
-        # Pay everyone equally
+        # Pay everyone equally based on number of tasks they labeled
+        unique_agents = set(r.agent_id for r in reports)
         payments = {
-            r.agent_id: self.payment_per_task * len(set(r.task_id for r in reports if r.agent_id == r.agent_id))
-            for r in reports
+            agent_id: self.payment_per_task * len(set(r.task_id for r in reports if r.agent_id == agent_id))
+            for agent_id in unique_agents
         }
 
         return MechanismResult(
@@ -778,8 +842,11 @@ class DawidSkene(Mechanism):
             # M-step: Update confusion matrices given current p
             confusion_new = self._m_step(reports_matrix, p_new, n_classes)
 
-            # Check convergence
-            if np.max(np.abs(p_new - p)) < self.tolerance:
+            # Check convergence of both label posteriors and confusion matrices
+            p_converged = np.max(np.abs(p_new - p)) < self.tolerance
+            confusion_converged = np.max(np.abs(confusion_new - confusion)) < self.tolerance
+
+            if p_converged and confusion_converged:
                 break
 
             p = p_new
@@ -984,8 +1051,14 @@ class RBTS(Mechanism):
 
                 # RBTS score (simplified version)
                 # Full version has more sophisticated scoring
-                if my_prediction > 0:
-                    score = np.log(frequency / my_prediction)
+                # Add numerical safety: prevent division by zero, extreme values, and log(0)
+                MIN_PREDICTION = 0.01  # Minimum allowed prediction
+                MIN_FREQUENCY = 1e-10  # Avoid log(0)
+
+                if my_prediction >= MIN_PREDICTION and frequency > 0:
+                    # Clip ratio to prevent extreme scores from gaming
+                    ratio = np.clip(frequency / my_prediction, 0.01, 100.0)
+                    score = np.log(max(ratio, MIN_FREQUENCY))
                 else:
                     score = 0
 
@@ -1031,19 +1104,29 @@ class Game:
         self.mechanism = self._create_mechanism()
 
     def run(self) -> GameInstance:
-        """Run the game: agents observe, report, mechanism aggregates."""
+        """Run the game: agents observe, report, mechanism aggregates.
+
+        IMPORTANT: Reporting is SIMULTANEOUS, not sequential.
+        - All agents observe and decide reports without seeing others' actual reports
+        - The loop is for implementation convenience only
+        - Passing self.agents allows strategic reasoning about agent types/distribution
+        - Strategic agents can reason about what others WILL report, but don't see actual reports
+        - Payments are computed after all reports are collected
+        """
 
         reports = []
 
         # For each task, get reports from agents
+        # NOTE: This loop processes agents sequentially, but conceptually they report simultaneously
         for task in self.tasks:
             task_reports = []
 
             for agent in self.agents:
-                # Agent observes
+                # Agent observes their private signal
                 signal = agent.observe(task)
 
-                # Agent decides what to report
+                # Agent decides what to report (simultaneously, without seeing others' reports)
+                # Passing self.agents allows reasoning about agent types, NOT seeing their reports
                 report_value = agent.report(
                     task, signal, self.mechanism, self.agents
                 )
@@ -1527,11 +1610,14 @@ Confirm known theoretical results:
 ```python
 def test_majority_voting_accuracy_with_truthful_agents():
     """With all high-ability truthful agents, accuracy should be very high."""
+    # Note: ExperimentConfig needs to be extended to include agent_params
+    # For now, this is pseudocode showing the intent
     config = ExperimentConfig(
         name="validation_truthful",
         num_tasks=100,
         num_agents=10,
         agent_mix={"truthful": 1.0},  # All truthful
+        agent_params={"truthful": {"ability": 0.95}},  # High ability
         mechanism_name="majority_voting",
         mechanism_params={},
         task_difficulty=0.5,
@@ -1543,7 +1629,7 @@ def test_majority_voting_accuracy_with_truthful_agents():
     engine = SimulationEngine(config)
     results = engine.run_experiment()
 
-    # Should achieve >95% accuracy
+    # With 10 agents at 95% accuracy, majority voting should achieve >95% accuracy
     assert results.mean_metrics["accuracy"] > 0.95
 
 def test_mechanisms_fail_with_all_lazy_agents():

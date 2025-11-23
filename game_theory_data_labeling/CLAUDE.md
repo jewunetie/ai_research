@@ -34,8 +34,10 @@ Each agent type represents a different annotator behavior pattern. We simulate m
 - **uv**: Package and project management
 - **NumPy/SciPy**: Numerical computations, optimization, probability distributions
 - **Matplotlib/Seaborn**: Visualization of results
+- **PyYAML**: Configuration file parsing (YAML experiment configs)
 
 ### Optional Extensions
+- **Pandas**: Data analysis and result aggregation (helpful but not required)
 - **PyTorch**: Only if implementing learning agents or neural network-based strategies
 - **Hugging Face**: Only if extending to real text/image data labeling tasks
 - **NetworkX**: If modeling agent interaction networks or collusion
