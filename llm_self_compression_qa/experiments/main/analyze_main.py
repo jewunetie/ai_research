@@ -136,7 +136,7 @@ def compare_conditions(df: pd.DataFrame, condition_a: str, condition_b: str):
     }
 
 
-def print_analysis(results: Dict):
+def print_analysis(results: Dict, results_file: Path):
     """Print comprehensive analysis of results."""
     print("=" * 80)
     print("Main Experiment Analysis")
@@ -202,7 +202,7 @@ def print_analysis(results: Dict):
                     print()
 
     # Save DataFrame for further analysis
-    output_dir = Path(results_file).parent
+    output_dir = results_file.parent
     df_file = output_dir / "analysis_dataframe.csv"
     df.to_csv(df_file, index=False)
     print(f"✓ Detailed results saved to: {df_file}")
@@ -228,7 +228,7 @@ def main():
     print()
 
     results = load_results(args.results_file)
-    print_analysis(results)
+    print_analysis(results, args.results_file)
 
     return 0
 

@@ -119,7 +119,11 @@ class MainExperiment:
             self.baselines["random_tokens"] = RandomTokenBaseline(
                 self.model, max_tokens=config.token_limit
             )
-        print(f"✓ Baselines: {', '.join(self.baselines.keys())}")
+
+        if self.baselines:
+            print(f"✓ Baselines: {', '.join(self.baselines.keys())}")
+        else:
+            print("⚠  No baselines enabled")
         print()
 
         # Load data
@@ -192,6 +196,11 @@ class MainExperiment:
         print(f"Compression variants: {len(self.config.compression_variants)}")
         print(f"Baselines: {len(self.baselines)}")
         print()
+
+        # Validate configuration
+        if len(self.config.compression_variants) == 0:
+            raise ValueError("No compression variants specified in configuration. "
+                           "Add at least one variant in the YAML config file.")
 
         # Get already completed docs
         completed_ids = self._get_completed_doc_ids()
@@ -293,6 +302,13 @@ class MainExperiment:
 
         # Step 2: Compress with each variant
         for variant in self.config.compression_variants:
+            # Validate prompt key exists
+            if variant.prompt_key not in PROMPT_REGISTRY:
+                raise ValueError(
+                    f"Unknown prompt_key '{variant.prompt_key}' in variant '{variant.name}'. "
+                    f"Available keys: {list(PROMPT_REGISTRY.keys())}"
+                )
+
             prompt_template = PROMPT_REGISTRY[variant.prompt_key]
             compressed, metadata = self.compressor.compress(
                 text,
@@ -335,13 +351,8 @@ class MainExperiment:
         # Step 4: Run baselines
         baseline_results = {}
         for baseline_name, baseline in self.baselines.items():
-            # Get baseline context
-            if baseline_name == "full_context":
-                context, metadata = baseline.process(text)
-            elif baseline_name == "no_context":
-                context, metadata = baseline.process(text)
-            elif baseline_name == "random_tokens":
-                context, metadata = baseline.process(text)
+            # Get baseline context (all baselines use same interface)
+            context, metadata = baseline.process(text)
 
             # Answer questions
             answers = []
@@ -388,7 +399,8 @@ class MainExperiment:
                 "total_attempted": self.config.num_documents,
                 "successful": len(self.results),
                 "failed": len(self.failed_docs),
-                "completion_rate": len(self.results) / self.config.num_documents,
+                "completion_rate": (len(self.results) / self.config.num_documents
+                                   if self.config.num_documents > 0 else 0.0),
             }
         }
 
@@ -412,7 +424,10 @@ class MainExperiment:
         print()
         print(f"Documents processed: {len(self.results)}/{self.config.num_documents}")
         print(f"Failed: {len(self.failed_docs)}")
-        print(f"Success rate: {len(self.results)/self.config.num_documents*100:.1f}%")
+
+        success_rate = (len(self.results) / self.config.num_documents * 100
+                       if self.config.num_documents > 0 else 0.0)
+        print(f"Success rate: {success_rate:.1f}%")
         print(f"Total time: {elapsed/60:.1f} minutes")
         print()
 
