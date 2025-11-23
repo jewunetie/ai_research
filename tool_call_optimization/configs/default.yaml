@@ -1,0 +1,34 @@
+# Default configuration for optimization experiments
+
+llm:
+  provider: "openai"  # openai, anthropic, local
+  model: null  # null = use env default
+  temperature: 0.0
+  max_tokens: 1000
+
+optimization:
+  max_iterations: 10
+  convergence_threshold: 0.02
+  train_test_split: 0.7
+
+tasks:
+  total_tasks: 100
+  difficulty_distribution:
+    level_1: 0.3
+    level_2: 0.3
+    level_3: 0.2
+    level_4: 0.1
+    level_5: 0.1
+
+agent:
+  max_tool_iterations: 10
+  verbose: false
+
+evaluation:
+  bootstrap_samples: 1000
+  confidence_level: 0.95
+
+output:
+  save_traces: true
+  save_prompts: true
+  save_feedback: true
