@@ -40,6 +40,7 @@ def test_evaluation_integration():
         'model': {
             'architecture': 'ff_network',
             'input_dim': 784,
+            'hidden_dims': [500, 500],  # Required for ff_network architecture
             'num_classes': 10,
             'normalize_between_layers': True
         },

@@ -147,7 +147,7 @@ class FFNetwork(nn.Module):
         """
         super().__init__()
 
-        self.layers = nn.ModuleList([
+        self.ff_layers = nn.ModuleList([
             FFLayer(layer_dims[i], layer_dims[i+1], threshold)
             for i in range(len(layer_dims) - 1)
         ])
@@ -169,7 +169,7 @@ class FFNetwork(nn.Module):
         outputs = []
         h = x
 
-        for layer in self.layers:
+        for layer in self.ff_layers:
             h = layer(h, normalize=self.normalize_between_layers)
             outputs.append(h)
 
@@ -199,7 +199,7 @@ class FFNetwork(nn.Module):
         h_pos = x_pos
         h_neg = x_neg
 
-        for layer in self.layers:
+        for layer in self.ff_layers:
             # Compute loss for this layer
             loss = layer.ff_loss(h_pos, h_neg)
             layer_losses.append(loss)
