@@ -27,7 +27,7 @@ class ToolRegistry:
         """Register default synthetic tools"""
 
         # Calculator tool
-        def calculator(operation: str, a: float, b: float = None) -> float:
+        def calculator(operation: str, a: float, b: float) -> float:
             """Perform basic calculator operations"""
             if operation == "add":
                 return a + b
@@ -56,7 +56,7 @@ class ToolRegistry:
                     enum=["add", "subtract", "multiply", "divide", "percentage"]
                 ),
                 ToolParameter(name="a", type="number", description="First number"),
-                ToolParameter(name="b", type="number", description="Second number", required=False),
+                ToolParameter(name="b", type="number", description="Second number", required=True),
             ],
             returns="Result of the calculation",
             function=calculator,

@@ -71,17 +71,28 @@ class MockLLMClient(BaseLLMClient):
 
         user_lower = user_message.lower()
 
-        # Check for calculator operations
-        # Addition: "calculate 10 + 20", "add 10 and 20", "10 + 20"
-        if any(word in user_lower for word in ["calculate", "add", "+", "sum"]):
+        # IMPORTANT: Check for percentage FIRST before generic "calculate" keyword
+        # Percentage: "15% tip on $48.50", "Calculate 10% tip", etc.
+        if "%" in user_message or "percent" in user_lower or "tip" in user_lower:
             numbers = re.findall(r'\d+(?:\.\d+)?', user_message)
             if len(numbers) >= 2:
+                # Find which number has % after it - that's the percentage
+                percentage_match = re.search(r'(\d+(?:\.\d+)?)%', user_message)
+                if percentage_match:
+                    percentage_value = float(percentage_match.group(1))
+                    # The other number is the base
+                    base_value = float(numbers[1]) if float(numbers[0]) == percentage_value else float(numbers[0])
+                else:
+                    # Fallback: assume first number is percentage, second is base
+                    percentage_value = float(numbers[0])
+                    base_value = float(numbers[1])
+
                 return [{
                     "name": "calculator",
                     "arguments": json.dumps({
-                        "operation": "add",
-                        "a": float(numbers[0]),
-                        "b": float(numbers[1])
+                        "operation": "percentage",
+                        "a": base_value,
+                        "b": percentage_value
                     })
                 }]
 
@@ -98,16 +109,17 @@ class MockLLMClient(BaseLLMClient):
                     })
                 }]
 
-        # Percentage: "15% tip on $48.50", "percentage"
-        if "%" in user_message or "percent" in user_lower or "tip" in user_lower:
+        # Addition: "calculate 10 + 20", "add 10 and 20", "10 + 20"
+        # MUST come after percentage check to avoid matching "calculate X% tip"
+        if any(word in user_lower for word in ["calculate", "add", "+", "sum"]):
             numbers = re.findall(r'\d+(?:\.\d+)?', user_message)
             if len(numbers) >= 2:
                 return [{
                     "name": "calculator",
                     "arguments": json.dumps({
-                        "operation": "percentage",
-                        "a": float(numbers[1] if "%" in user_message[:user_message.find(numbers[0])] else numbers[0]),
-                        "b": float(numbers[0] if "%" in user_message[:user_message.find(numbers[0])] else numbers[1])
+                        "operation": "add",
+                        "a": float(numbers[0]),
+                        "b": float(numbers[1])
                     })
                 }]
 
