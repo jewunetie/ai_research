@@ -1,0 +1,38 @@
+# Baseline: Random Init + BP Classifier on MNIST
+# No pretraining - establishes lower bound for value of feature learning
+
+experiment:
+  name: "mnist_baseline_random_init"
+  approach: "random_init_bp"
+  seed: 42
+  device: "auto"
+
+data:
+  dataset: "mnist"
+  batch_size: 512
+  num_workers: 4
+  normalize: true
+
+model:
+  architecture: "hybrid_ff_bp"  # Need hybrid model for FF layers
+  input_dim: 784
+  ff_hidden_dims: [500, 500, 500]  # These will stay at random init (frozen)
+  num_classes: 10
+  ff_threshold: 2.0
+
+training:
+  approach: "random_init_bp"
+  num_epochs: 50  # Train classifier only
+  learning_rate: 0.001  # Standard Adam LR
+  optimizer: "adam"
+
+evaluation:
+  save_checkpoints: false
+  checkpoint_freq: 20
+  log_interval: 10
+  compute_linear_probing: false  # Random features won't be interesting
+  save_tsne: false
+
+logging:
+  use_tensorboard: false
+  save_dir: "results/mnist_baseline_random_init"

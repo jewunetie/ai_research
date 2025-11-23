@@ -247,3 +247,171 @@ def print_model_summary(model: nn.Module):
     print(f"Trainable parameters: {trainable_params:,}")
     print(f"Non-trainable parameters: {total_params - trainable_params:,}")
     print("="*60 + "\n")
+
+
+class Autoencoder(nn.Module):
+    """
+    Autoencoder for unsupervised pretraining.
+
+    The autoencoder learns to reconstruct the input through a bottleneck,
+    forcing the encoder to learn useful representations. After pretraining,
+    the encoder can be used as a feature extractor for downstream tasks.
+    """
+
+    def __init__(
+        self,
+        input_dim: int,
+        encoder_hidden_dims: list[int],
+        activation: str = "relu",
+        dropout: float = 0.0,
+        batch_norm: bool = False
+    ):
+        """
+        Initialize Autoencoder.
+
+        Args:
+            input_dim: Input dimension (e.g., 784 for MNIST)
+            encoder_hidden_dims: Hidden dimensions for encoder (e.g., [500, 500, 500])
+            activation: Activation function
+            dropout: Dropout probability
+            batch_norm: Whether to use batch normalization
+        """
+        super().__init__()
+
+        self.input_dim = input_dim
+        self.encoder_hidden_dims = encoder_hidden_dims
+        self.latent_dim = encoder_hidden_dims[-1]  # Bottleneck dimension
+
+        # Build encoder: input_dim -> hidden1 -> ... -> latent
+        encoder_dims = [input_dim] + encoder_hidden_dims
+        self.encoder = MLP(
+            layer_dims=encoder_dims,
+            activation=activation,
+            dropout=dropout,
+            batch_norm=batch_norm
+        )
+
+        # Build decoder: latent -> ... -> hidden1 -> input_dim (symmetric)
+        decoder_dims = encoder_hidden_dims[::-1] + [input_dim]
+        self.decoder = MLP(
+            layer_dims=decoder_dims,
+            activation=activation,
+            dropout=dropout,
+            batch_norm=batch_norm
+        )
+
+    def encode(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Encode input to latent representation.
+
+        Args:
+            x: Input tensor [batch_size, input_dim]
+
+        Returns:
+            latent: Encoded representation [batch_size, latent_dim]
+        """
+        return self.encoder(x)
+
+    def decode(self, latent: torch.Tensor) -> torch.Tensor:
+        """
+        Decode latent representation to reconstruction.
+
+        Args:
+            latent: Latent tensor [batch_size, latent_dim]
+
+        Returns:
+            reconstruction: Reconstructed input [batch_size, input_dim]
+        """
+        return self.decoder(latent)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Forward pass through autoencoder.
+
+        Args:
+            x: Input tensor [batch_size, input_dim]
+
+        Returns:
+            reconstruction: Reconstructed input [batch_size, input_dim]
+            latent: Encoded representation [batch_size, latent_dim]
+        """
+        latent = self.encode(x)
+        reconstruction = self.decode(latent)
+        return reconstruction, latent
+
+    def freeze_encoder(self):
+        """Freeze encoder parameters (for fine-tuning phase)."""
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+        print("Encoder parameters frozen")
+
+    def unfreeze_encoder(self):
+        """Unfreeze encoder parameters."""
+        for param in self.encoder.parameters():
+            param.requires_grad = True
+        print("Encoder parameters unfrozen")
+
+
+class AutoencoderClassifier(nn.Module):
+    """
+    Classifier built on top of pretrained autoencoder.
+
+    Uses the encoder as a frozen feature extractor and trains
+    a linear classifier on top for supervised learning.
+    """
+
+    def __init__(
+        self,
+        autoencoder: Autoencoder,
+        num_classes: int,
+        freeze_encoder: bool = True
+    ):
+        """
+        Initialize classifier with pretrained autoencoder.
+
+        Args:
+            autoencoder: Pretrained autoencoder
+            num_classes: Number of output classes
+            freeze_encoder: Whether to freeze encoder during training
+        """
+        super().__init__()
+
+        self.encoder = autoencoder.encoder
+        self.latent_dim = autoencoder.latent_dim
+
+        # Classifier head
+        self.classifier = nn.Linear(self.latent_dim, num_classes)
+
+        # Optionally freeze encoder
+        if freeze_encoder:
+            for param in self.encoder.parameters():
+                param.requires_grad = False
+            print(f"Encoder frozen ({self.latent_dim}D features)")
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass.
+
+        Args:
+            x: Input tensor [batch_size, input_dim]
+
+        Returns:
+            logits: Class logits [batch_size, num_classes]
+        """
+        # Extract features from encoder
+        features = self.encoder(x)
+
+        # Classify
+        logits = self.classifier(features)
+
+        return logits
+
+    def freeze_encoder(self):
+        """Freeze encoder parameters."""
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+
+    def unfreeze_encoder(self):
+        """Unfreeze encoder parameters for fine-tuning."""
+        for param in self.encoder.parameters():
+            param.requires_grad = True

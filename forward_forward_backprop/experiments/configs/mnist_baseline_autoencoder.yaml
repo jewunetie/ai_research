@@ -1,0 +1,42 @@
+# Baseline: Autoencoder Pretrain + BP Fine-tune on MNIST
+# Two-phase approach: unsupervised pretraining then supervised fine-tuning
+
+experiment:
+  name: "mnist_baseline_autoencoder"
+  approach: "autoencoder_pretrain"
+  seed: 42
+  device: "auto"
+
+data:
+  dataset: "mnist"
+  batch_size: 512
+  num_workers: 4
+  normalize: true
+
+model:
+  architecture: "autoencoder"
+  input_dim: 784
+  encoder_hidden_dims: [500, 500, 500]  # Encoder: 784 -> 500 -> 500 -> 500
+  num_classes: 10
+  activation: "relu"
+  dropout: 0.0
+  batch_norm: false
+
+training:
+  approach: "autoencoder_pretrain"
+  pretrain_epochs: 100  # Unsupervised pretraining with MSE
+  finetune_epochs: 50   # Supervised fine-tuning with CE
+  pretrain_learning_rate: 0.001
+  finetune_learning_rate: 0.001
+  optimizer: "adam"
+
+evaluation:
+  save_checkpoints: false
+  checkpoint_freq: 20
+  log_interval: 10
+  compute_linear_probing: false  # Could be interesting to compare
+  save_tsne: false
+
+logging:
+  use_tensorboard: false
+  save_dir: "results/mnist_baseline_autoencoder"

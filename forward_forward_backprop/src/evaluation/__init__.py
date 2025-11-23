@@ -8,7 +8,9 @@ from .metrics import (
     evaluate_model,
     linear_probing_evaluation,
     layer_wise_goodness_analysis,
-    extract_features
+    extract_features,
+    compute_cka,
+    compare_model_representations
 )
 
 from .visualization import (
@@ -27,6 +29,8 @@ __all__ = [
     'linear_probing_evaluation',
     'layer_wise_goodness_analysis',
     'extract_features',
+    'compute_cka',
+    'compare_model_representations',
     # Visualization
     'plot_training_curves',
     'plot_confusion_matrix',

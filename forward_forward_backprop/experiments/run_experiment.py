@@ -28,12 +28,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.utils.config import Config
 from src.utils.device import get_device
 from src.data.datasets import get_dataloaders, get_dataset_info
-from src.models.mlp import MLP, HybridFFBPModel
+from src.models.mlp import MLP, HybridFFBPModel, Autoencoder
 from src.models.ff_layer import FFNetwork
 from src.training.bp_trainer import BPTrainer
 from src.training.ff_trainer import FFTrainer
 from src.training.sequential_phased import SequentialPhasedTrainer
 from src.training.detached_interface import DetachedInterfaceTrainer
+from src.training.autoencoder_trainer import AutoencoderTrainer
 
 
 def create_model(config: Config, device: torch.device):
@@ -88,6 +89,17 @@ def create_model(config: Config, device: torch.device):
             ff_threshold=config.get('model.ff_threshold', 2.0)
         ).to(device)
         print(f"Created HybridFFBPModel with {len(config.get('model.ff_hidden_dims'))} FF layers")
+
+    elif arch == 'autoencoder':
+        # Autoencoder for unsupervised pretraining
+        model = Autoencoder(
+            input_dim=config.get('model.input_dim'),
+            encoder_hidden_dims=config.get('model.encoder_hidden_dims'),
+            activation=config.get('model.activation', 'relu'),
+            dropout=config.get('model.dropout', 0.0),
+            batch_norm=config.get('model.batch_norm', False)
+        ).to(device)
+        print(f"Created Autoencoder with {len(config.get('model.encoder_hidden_dims'))} encoder layers")
 
     else:
         raise ValueError(f"Unknown architecture: {arch}")
@@ -159,6 +171,35 @@ def create_trainer(approach: str, model, device, config: Config, num_classes: in
             config=trainer_config
         )
         print(f"Initialized DetachedInterfaceTrainer (simultaneous FF+BP)")
+
+    elif approach == 'random_init_bp':
+        # Random Init + BP Classifier baseline
+        # Freeze FF layers (keep random initialization), train only classifier
+        if not hasattr(model, 'freeze_ff_layers'):
+            raise ValueError("random_init_bp approach requires HybridFFBPModel with freeze_ff_layers method")
+
+        model.freeze_ff_layers()
+        print("Frozen FF layers at random initialization (no pretraining)")
+
+        trainer = BPTrainer(
+            model=model,
+            device=device,
+            learning_rate=config.get('training.learning_rate'),
+            optimizer_type=config.get('training.optimizer', 'adam')
+        )
+        print(f"Initialized BPTrainer for classifier only (lr={config.get('training.learning_rate')})")
+
+    elif approach == 'autoencoder_pretrain':
+        # Autoencoder pretrain + BP fine-tune baseline
+        trainer = AutoencoderTrainer(
+            autoencoder=model,
+            device=device,
+            pretrain_lr=config.get('training.pretrain_learning_rate', 0.001),
+            finetune_lr=config.get('training.finetune_learning_rate', 0.001),
+            optimizer_type=config.get('training.optimizer', 'adam')
+        )
+        print(f"Initialized AutoencoderTrainer (pretrain_lr={config.get('training.pretrain_learning_rate', 0.001)}, "
+              f"finetune_lr={config.get('training.finetune_learning_rate', 0.001)})")
 
     else:
         raise ValueError(f"Unknown training approach: {approach}")
@@ -322,6 +363,50 @@ def run_experiment(config_path: str):
             'best_epoch': history.get('best_epoch', 0),
             'history': history
         }
+
+    elif approach == 'random_init_bp':
+        num_epochs = config.get('training.num_epochs')
+
+        # Same as pure_backprop but FF layers are frozen at random init
+        # BPTrainer.train() expects: train_loader, val_loader, num_epochs
+        history = trainer.train(
+            train_loader=train_loader,
+            val_loader=test_loader,
+            num_epochs=num_epochs
+        )
+
+        # Adapt results to expected format
+        results = {
+            'final_test_acc': history['val_accs'][-1] if history['val_accs'] else 0.0,
+            'best_test_acc': history['best_val_acc'],
+            'best_epoch': history['val_accs'].index(history['best_val_acc']) + 1 if history['val_accs'] else 0,
+            'history': history
+        }
+
+    elif approach == 'autoencoder_pretrain':
+        pretrain_epochs = config.get('training.pretrain_epochs')
+        finetune_epochs = config.get('training.finetune_epochs')
+        num_classes = config.get('model.num_classes', 10)
+
+        # AutoencoderTrainer.train() runs both phases
+        history = trainer.train(
+            train_loader=train_loader,
+            val_loader=test_loader,
+            pretrain_epochs=pretrain_epochs,
+            finetune_epochs=finetune_epochs,
+            num_classes=num_classes
+        )
+
+        # Adapt results to expected format
+        results = {
+            'final_test_acc': history['final_val_acc'],
+            'best_test_acc': history['best_val_acc'],
+            'best_epoch': history['best_epoch'],
+            'history': history
+        }
+
+    else:
+        raise ValueError(f"Unknown training approach: {approach}")
 
     # Save final results
     print("\n" + "=" * 80)

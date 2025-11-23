@@ -366,3 +366,143 @@ def layer_wise_goodness_analysis(
         }
 
     return results
+
+
+def compute_cka(
+    features_x: torch.Tensor,
+    features_y: torch.Tensor,
+    center: bool = True
+) -> float:
+    """
+    Compute Centered Kernel Alignment (CKA) between two feature representations.
+
+    CKA is a similarity measure for comparing neural network representations.
+    It measures the similarity between the representations learned by different
+    models or layers. CKA is invariant to orthogonal transformations and isotropic
+    scaling.
+
+    Reference: Kornblith et al. (2019) "Similarity of Neural Network Representations
+    Revisited"
+
+    Args:
+        features_x: First set of features [n_samples, dim_x]
+        features_y: Second set of features [n_samples, dim_y]
+        center: Whether to center features (subtract mean). Default True.
+
+    Returns:
+        CKA similarity score (0 to 1, where 1 is identical representations)
+
+    Example:
+        >>> # Compare features from two models
+        >>> features_ff, _ = extract_features(ff_model, loader, device)
+        >>> features_bp, _ = extract_features(bp_model, loader, device)
+        >>> similarity = compute_cka(features_ff, features_bp)
+        >>> print(f"CKA similarity: {similarity:.4f}")
+    """
+    # Ensure features are on CPU and float
+    features_x = features_x.cpu().float()
+    features_y = features_y.cpu().float()
+
+    # Ensure same number of samples
+    if features_x.shape[0] != features_y.shape[0]:
+        raise ValueError(
+            f"Features must have same number of samples. "
+            f"Got {features_x.shape[0]} and {features_y.shape[0]}"
+        )
+
+    n_samples = features_x.shape[0]
+
+    # Center features (subtract mean)
+    if center:
+        features_x = features_x - features_x.mean(dim=0, keepdim=True)
+        features_y = features_y - features_y.mean(dim=0, keepdim=True)
+
+    # Compute Gram matrices (kernel matrices)
+    # K_x = X @ X^T (n_samples x n_samples)
+    # K_y = Y @ Y^T (n_samples x n_samples)
+    gram_x = features_x @ features_x.T
+    gram_y = features_y @ features_y.T
+
+    # Compute HSIC (Hilbert-Schmidt Independence Criterion)
+    # HSIC(X, Y) = tr(K_x @ K_y) / (n-1)^2
+    # For CKA, we use the unnormalized version
+    hsic_xy = torch.sum(gram_x * gram_y)
+
+    # Compute normalization terms
+    # HSIC(X, X) and HSIC(Y, Y)
+    hsic_xx = torch.sum(gram_x * gram_x)
+    hsic_yy = torch.sum(gram_y * gram_y)
+
+    # CKA formula
+    # CKA(X, Y) = HSIC(X, Y) / sqrt(HSIC(X, X) * HSIC(Y, Y))
+    cka_score = hsic_xy / (torch.sqrt(hsic_xx * hsic_yy) + 1e-10)
+
+    return cka_score.item()
+
+
+def compare_model_representations(
+    model1: nn.Module,
+    model2: nn.Module,
+    data_loader: DataLoader,
+    device: torch.device,
+    layer_indices: Optional[List[int]] = None
+) -> Dict[str, float]:
+    """
+    Compare representations between two models using CKA.
+
+    This function extracts features from both models and computes CKA
+    similarity for each specified layer.
+
+    Args:
+        model1: First model
+        model2: Second model
+        data_loader: DataLoader for extracting features
+        device: Device to use
+        layer_indices: List of layer indices to compare (None = all layers)
+
+    Returns:
+        Dictionary mapping layer indices to CKA scores
+
+    Example:
+        >>> # Compare FF model vs BP model representations
+        >>> similarities = compare_model_representations(
+        ...     ff_model, bp_model, test_loader, device
+        ... )
+        >>> for layer, score in similarities.items():
+        ...     print(f"Layer {layer}: CKA = {score:.4f}")
+    """
+    print("\nComparing Model Representations with CKA")
+    print("-" * 60)
+
+    results = {}
+
+    # Determine which layers to compare
+    if layer_indices is None:
+        # Compare all FF layers if available
+        if hasattr(model1, 'ff_layers'):
+            layer_indices = list(range(len(model1.ff_layers)))
+        else:
+            # Just compare final representations
+            layer_indices = [None]
+
+    for layer_idx in layer_indices:
+        print(f"\nComparing layer {layer_idx}...")
+
+        # Extract features from both models
+        features1, _ = extract_features(model1, data_loader, device, layer_idx)
+        features2, _ = extract_features(model2, data_loader, device, layer_idx)
+
+        # Compute CKA similarity
+        cka_score = compute_cka(features1, features2)
+
+        layer_name = f"layer_{layer_idx}" if layer_idx is not None else "final"
+        results[layer_name] = cka_score
+
+        print(f"  CKA similarity: {cka_score:.4f}")
+
+    print("\n" + "-" * 60)
+    print("CKA Comparison Summary:")
+    for layer, score in results.items():
+        print(f"  {layer}: {score:.4f}")
+
+    return results
