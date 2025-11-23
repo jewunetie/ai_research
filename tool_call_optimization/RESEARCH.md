@@ -29,6 +29,7 @@ This research document synthesizes findings on feedback-driven prompt optimizati
 8. [Adaptation for Tool Call Pattern Optimization](#8-adaptation-for-tool-call-pattern-optimization)
 9. [Implementation Considerations](#9-implementation-considerations)
 10. [References and Resources](#10-references-and-resources)
+11. [Deep Implementation Design](#11-deep-implementation-design)
 
 ---
 
@@ -987,6 +988,8 @@ agent:
 
 ## 11. Deep Implementation Design
 
+**Note on Code Specifications**: The code blocks in this section are detailed specifications and pseudocode showing the architecture and key algorithms. They are meant to guide implementation, not be copy-pasted directly. Some helper methods (e.g., `_call_llm()`, `_parse_feedback_response()`) are referenced but not fully implemented - these would be straightforward wrappers around OpenAI/Anthropic APIs. Import statements are omitted for brevity. **At implementation time, verify all model names, APIs, and library versions against current best practices.**
+
 ### 11.1 System Overview
 
 **Project Name**: Tool Call Optimization via Meta-Learning (TCOML)
@@ -1290,11 +1293,14 @@ class FeedbackGenerator:
             for tc in trace.tool_calls
         ])
 
+        # Extract available tools from task definition
+        available_tools = ', '.join(task.required_tools)
+
         prompt = f"""Analyze this agent's tool usage execution:
 
 TASK: {task.description}
 
-TOOLS AVAILABLE: {', '.join(trace.system_prompt)}  # Extract from prompt
+TOOLS AVAILABLE: {available_tools}
 
 EXECUTION SEQUENCE:
 {tool_sequence_str}

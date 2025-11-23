@@ -58,9 +58,15 @@ We adapt the **Arize-ai prompt-learning** methodology (natural language feedback
 **Package Management**: uv (for fast, reliable dependency management)
 
 **LLM Access**:
-- **Primary**: OpenAI API (GPT-4 for meta-prompting, GPT-3.5 for execution)
-- **Alternative**: Anthropic Claude API
-- **Local Models** (for cost reduction): Llama 3.2 3B/7B via Ollama or HuggingFace
+- **API-Based Models**: OpenAI, Anthropic, or other providers
+  - ⚠️ **Note on Model Selection**: This document was written with knowledge cutoff of January 2025. Model availability and APIs evolve rapidly. At implementation time, verify:
+    - Current best-performing models (may be GPT-5.x, Claude 4.x, or newer)
+    - Latest API specifications (e.g., OpenAI Response API vs. Chat Completions API)
+    - Pricing and rate limits
+    - Tool calling / function calling capabilities
+  - **Recommendation**: Use latest stable models that support structured outputs and tool/function calling
+- **Local Models** (for cost reduction): Latest Llama, Qwen, Phi, or other open models via Ollama/HuggingFace
+  - Verify current state-of-the-art small models (3B-7B range)
 
 **ML Framework**: PyTorch (minimal usage, primarily for potential small model fine-tuning)
 
@@ -85,6 +91,7 @@ pydantic >= 2.0 (structured data validation)
 pytest >= 7.0 (for test execution)
 pandas >= 2.0 (data handling)
 numpy >= 1.24
+scikit-learn >= 1.3 (for trace clustering, pattern analysis)
 ```
 
 **Development**:
@@ -93,6 +100,8 @@ black (code formatting)
 ruff (linting)
 mypy (type checking)
 ```
+
+**Note**: All version numbers are minimum requirements as of January 2025. Check for newer stable versions at implementation time.
 
 ### Hardware Requirements
 
@@ -120,10 +129,14 @@ A **research prototype** demonstrating meta-learning for tool call optimization:
 **Core Components**:
 1. **ToolCallAgent**: Agent that executes tasks using a defined tool set
 2. **ExecutionTracer**: Captures complete traces of tool calls + results
-3. **TaskEvaluator**: Scores task outcomes with multiple metrics
-4. **FeedbackGenerator**: LLM that analyzes traces and generates critiques
+3. **FeedbackGenerator**: LLM that analyzes traces and generates critiques
+4. **FeedbackAggregator**: Identifies patterns across multiple task executions
 5. **MetaPrompter**: LLM that improves system prompts based on aggregated feedback
 6. **OptimizationLoop**: Orchestrates the entire meta-learning process
+
+**Supporting Components**:
+- **Task**: Data structure defining tasks with success criteria and evaluation functions
+- **EvaluationMetrics**: Statistical analysis of agent performance across multiple metrics
 
 **Benchmarks** (progressive complexity):
 1. **Synthetic Tool Tasks**: Custom tasks requiring 2-5 tool calls (quick iteration)
@@ -141,7 +154,7 @@ A **research prototype** demonstrating meta-learning for tool call optimization:
 
 **Research Focus**: Validate the core hypothesis that meta-learning can discover effective tool usage patterns.
 
-**Time-Boxed**: 6-8 weeks for a working prototype with results.
+**Time-Boxed**: 8 weeks for a working prototype with results (6 weeks possible if phases overlap).
 
 **Reproducible**: All experiments deterministic, versioned, documented.
 
@@ -176,7 +189,7 @@ A **research prototype** demonstrating meta-learning for tool call optimization:
    - Ablation: textual critiques vs. just pass/fail scores
    - Does richer feedback lead to faster convergence?
 
-6. **What tool call patterns are most impact?**
+6. **What tool call patterns are most impactful?**
    - Ordering? Error handling? Validation steps?
    - Which improvements matter most?
 
@@ -399,4 +412,67 @@ Even if absolute performance gains are modest, **deep understanding** of what wo
 
 ---
 
+## Important Implementation Notes
+
+### On Epistemic Humility
+
+**This document reflects knowledge as of January 2025.** The AI/LLM landscape evolves rapidly:
+
+**Before Implementation, Verify:**
+
+1. **Current Model Landscape**
+   - Latest GPT models (may be GPT-5.x, GPT-6, or successors)
+   - Latest Claude models (may be Claude 4.x, 5.x, or successors)
+   - Latest open models (Llama, Qwen, Gemma, Phi families)
+   - New model providers and capabilities
+
+2. **API Changes**
+   - OpenAI may have new APIs (Response API mentioned by some users vs. Chat Completions)
+   - Tool/function calling specifications may have changed
+   - Streaming, batch processing, and other features
+   - Authentication and rate limiting mechanisms
+
+3. **Framework Maturity**
+   - DSPy, LangChain, and other frameworks evolve rapidly
+   - New prompt optimization frameworks may have emerged
+   - Integration patterns and best practices shift
+
+4. **Benchmark Status**
+   - SWE-Bench, ToolBench, and other benchmarks may have new versions
+   - New benchmarks for agentic systems may exist
+   - Evaluation standards may have evolved
+
+5. **Hardware/Software Environment**
+   - Python version (may be 3.12+, 3.13+)
+   - GPU requirements for local models
+   - Quantization techniques (GGUF, AWQ, GPTQ evolution)
+   - Inference frameworks (vLLM, TGI, llama.cpp updates)
+
+### Recommended Pre-Implementation Checklist
+
+Before writing code:
+- [ ] Research current state-of-the-art models for tool calling
+- [ ] Test current API capabilities with simple examples
+- [ ] Review latest academic papers on prompt optimization (arxiv.org/cs.CL)
+- [ ] Check for new frameworks specifically for agentic systems
+- [ ] Validate all dependency versions and compatibility
+- [ ] Review current best practices for LLM evaluation
+- [ ] Test cost estimates with current API pricing
+
+### Philosophy: Adapt, Don't Assume
+
+This document provides architectural guidance and research foundations. **Specific implementation details (model names, API endpoints, library versions) should be validated at implementation time.**
+
+The core concepts remain valid:
+- Meta-learning for optimization
+- Execution feedback as training signal
+- Natural language critiques
+- Iterative improvement loops
+
+The specific technologies to implement these concepts will evolve.
+
+---
+
 *This is a research prototype with constrained scope, emphasizing interpretability, reproducibility, and scientific rigor over raw performance or production readiness.*
+
+*Last Updated: 2025-11-22 | Knowledge Cutoff: January 2025 | Document Version: 2.0*
