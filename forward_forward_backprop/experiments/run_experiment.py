@@ -101,7 +101,7 @@ def create_model(config: Config, device: torch.device):
     return model
 
 
-def create_trainer(approach: str, model, device, config: Config):
+def create_trainer(approach: str, model, device, config: Config, num_classes: int = 10):
     """
     Create appropriate trainer based on training approach.
 
@@ -110,6 +110,7 @@ def create_trainer(approach: str, model, device, config: Config):
         model: Initialized model
         device: Device
         config: Config object
+        num_classes: Number of output classes (needed for FF trainer)
 
     Returns:
         trainer: Initialized trainer instance
@@ -129,7 +130,8 @@ def create_trainer(approach: str, model, device, config: Config):
             device=device,
             learning_rate=config.get('training.learning_rate'),
             threshold=config.get('training.threshold', 2.0),
-            negative_strategy=config.get('training.negative_strategy', 'random_label')
+            negative_strategy=config.get('training.negative_strategy', 'random_label'),
+            num_classes=num_classes
         )
         print(f"Initialized FFTrainer (threshold={config.get('training.threshold')})")
 
@@ -225,7 +227,7 @@ def run_experiment(config_path: str):
     # Create trainer
     print(f"\n[5/6] Initializing trainer...")
     approach = config.get('experiment.approach')
-    trainer = create_trainer(approach, model, device, config)
+    trainer = create_trainer(approach, model, device, config, num_classes=dataset_info['num_classes'])
 
     # Create results directory
     save_dir = Path(config.get('logging.save_dir'))
@@ -261,25 +263,65 @@ def run_experiment(config_path: str):
         }
 
     elif approach == 'pure_ff':
-        # TODO: Fix FFTrainer interface to match (needs investigation)
-        raise NotImplementedError(
-            "pure_ff trainer interface needs to be updated to match experiment runner. "
-            "This is a known issue that will be fixed in the next iteration."
+        num_epochs = config.get('training.num_epochs')
+
+        # FFTrainer.train() expects: train_loader, val_loader, num_epochs
+        history = trainer.train(
+            train_loader=train_loader,
+            val_loader=test_loader,
+            num_epochs=num_epochs
         )
+
+        # Adapt results to expected format
+        results = {
+            'final_test_acc': history.get('val_accs', [0.0])[-1],
+            'best_test_acc': history.get('best_val_acc', 0.0),
+            'best_epoch': history.get('best_epoch', 0),
+            'history': history
+        }
 
     elif approach == 'sequential_phased':
-        # TODO: Fix SequentialPhasedTrainer interface
-        raise NotImplementedError(
-            "sequential_phased trainer interface needs to be updated to match experiment runner. "
-            "This is a known issue that will be fixed in the next iteration."
+        # SequentialPhasedTrainer needs 4 dataloaders
+        # For now, we'll use the same loaders for unsupervised and supervised
+        # (this is a simplification - ideally we'd have separate unsupervised data)
+
+        history = trainer.train(
+            train_loader=train_loader,           # Unsupervised train
+            val_loader=test_loader,              # Unsupervised val
+            train_loader_supervised=train_loader,  # Supervised train
+            val_loader_supervised=test_loader    # Supervised val
         )
 
+        # Adapt results to expected format
+        results = {
+            'final_test_acc': history.get('phase2b_val_accs',
+                              history.get('phase2a_val_accs', [0.0]))[-1],
+            'best_test_acc': max([
+                max(history.get('phase2a_val_accs', [0.0])),
+                max(history.get('phase2b_val_accs', [0.0]))
+            ]),
+            'best_epoch': 0,  # Would need to track across phases
+            'history': history
+        }
+
     elif approach == 'detached_interface':
-        # TODO: Fix DetachedInterfaceTrainer interface
-        raise NotImplementedError(
-            "detached_interface trainer interface needs to be updated to match experiment runner. "
-            "This is a known issue that will be fixed in the next iteration."
+        num_epochs = config.get('training.num_epochs')
+
+        # DetachedInterfaceTrainer needs 3 loaders + num_epochs
+        history = trainer.train(
+            unsup_train_loader=train_loader,  # For FF training
+            sup_train_loader=train_loader,    # For BP training (same data, different use)
+            sup_val_loader=test_loader,       # For validation
+            num_epochs=num_epochs
         )
+
+        # Adapt results to expected format
+        results = {
+            'final_test_acc': history.get('val_accs', [0.0])[-1],
+            'best_test_acc': history.get('best_val_acc', 0.0),
+            'best_epoch': history.get('best_epoch', 0),
+            'history': history
+        }
 
     # Save final results
     print("\n" + "=" * 80)
