@@ -1,0 +1,40 @@
+# Baseline: Pure Backpropagation on CIFAR-10
+# Compare against hybrid approaches on color images
+
+experiment:
+  name: "cifar10_baseline_bp"
+  approach: "pure_backprop"
+  seed: 42
+  device: "auto"
+
+data:
+  dataset: "cifar10"
+  batch_size: 256  # Smaller batch for larger images
+  num_workers: 4
+  normalize: true
+
+model:
+  architecture: "mlp"
+  input_dim: 3072  # 32x32x3
+  hidden_dims: [1000, 1000, 1000]  # Larger for color images
+  num_classes: 10
+  activation: "relu"
+  dropout: 0.0
+  batch_norm: false
+
+training:
+  num_epochs: 150  # More epochs for harder dataset
+  learning_rate: 0.001
+  optimizer: "adam"
+
+evaluation:
+  save_checkpoints: true
+  checkpoint_freq: 25
+  log_interval: 10
+  compute_linear_probing: true
+  save_tsne: true
+
+logging:
+  use_tensorboard: true
+  tensorboard_dir: "results/tensorboard"
+  save_dir: "results/cifar10_baseline_bp"

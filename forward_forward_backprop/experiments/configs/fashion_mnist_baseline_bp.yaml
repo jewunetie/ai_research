@@ -1,0 +1,40 @@
+# Baseline: Pure Backpropagation on Fashion-MNIST
+# Compare against hybrid approaches
+
+experiment:
+  name: "fashion_mnist_baseline_bp"
+  approach: "pure_backprop"
+  seed: 42
+  device: "auto"
+
+data:
+  dataset: "fashion_mnist"
+  batch_size: 512
+  num_workers: 4
+  normalize: true
+
+model:
+  architecture: "mlp"
+  input_dim: 784
+  hidden_dims: [500, 500, 500]
+  num_classes: 10
+  activation: "relu"
+  dropout: 0.0
+  batch_norm: false
+
+training:
+  num_epochs: 100
+  learning_rate: 0.001
+  optimizer: "adam"
+
+evaluation:
+  save_checkpoints: true
+  checkpoint_freq: 20
+  log_interval: 10
+  compute_linear_probing: true
+  save_tsne: true
+
+logging:
+  use_tensorboard: true
+  tensorboard_dir: "results/tensorboard"
+  save_dir: "results/fashion_mnist_baseline_bp"

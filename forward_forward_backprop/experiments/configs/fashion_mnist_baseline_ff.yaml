@@ -1,0 +1,41 @@
+# Baseline: Pure Forward-Forward on Fashion-MNIST
+# Compare against pure BP and hybrid approaches
+
+experiment:
+  name: "fashion_mnist_baseline_ff"
+  approach: "pure_ff"
+  seed: 42
+  device: "auto"
+
+data:
+  dataset: "fashion_mnist"
+  batch_size: 512
+  num_workers: 4
+  normalize: true
+
+model:
+  architecture: "ff_network"
+  input_dim: 784
+  hidden_dims: [500, 500, 500]
+  num_classes: 10
+  ff_threshold: 2.0
+
+training:
+  approach: "pure_ff"
+  num_epochs: 100
+  learning_rate: 0.03
+  threshold: 2.0
+  negative_strategy: "random_label"
+  layer_wise: true
+
+evaluation:
+  save_checkpoints: true
+  checkpoint_freq: 20
+  log_interval: 10
+  compute_linear_probing: true
+  save_tsne: true
+
+logging:
+  use_tensorboard: true
+  tensorboard_dir: "results/tensorboard"
+  save_dir: "results/fashion_mnist_baseline_ff"
