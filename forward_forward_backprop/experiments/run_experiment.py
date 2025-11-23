@@ -355,14 +355,87 @@ def run_experiment(config_path: str):
         print("\n" + "=" * 80)
         print("LINEAR PROBING EVALUATION")
         print("=" * 80)
-        print("(Not yet implemented - coming in evaluation module)")
+
+        try:
+            from src.evaluation import linear_probing_evaluation
+
+            # Probe each FF layer
+            num_ff_layers = len(model.ff_layers)
+            probing_results = {}
+
+            for layer_idx in range(num_ff_layers):
+                probe_result = linear_probing_evaluation(
+                    model=model,
+                    train_loader=train_loader,
+                    test_loader=test_loader,
+                    device=device,
+                    num_classes=dataset_info['num_classes'],
+                    layer_index=layer_idx,
+                    num_epochs=50,
+                    learning_rate=0.001
+                )
+                probing_results[f'layer_{layer_idx}'] = probe_result
+
+            # Save probing results
+            probing_file = save_dir / f"linear_probing_{timestamp}.txt"
+            with open(probing_file, 'w') as f:
+                f.write("LINEAR PROBING RESULTS\n")
+                f.write("=" * 60 + "\n\n")
+                for layer_name, result in probing_results.items():
+                    f.write(f"{layer_name}:\n")
+                    for key, value in result.items():
+                        f.write(f"  {key}: {value}\n")
+                    f.write("\n")
+
+            print(f"✓ Linear probing results saved to: {probing_file}")
+
+        except Exception as e:
+            print(f"⚠️  Linear probing failed: {e}")
 
     # Optional: Generate t-SNE visualizations
     if config.get('evaluation.save_tsne', False):
         print("\n" + "=" * 80)
         print("t-SNE VISUALIZATION")
         print("=" * 80)
-        print("(Not yet implemented - coming in visualization module)")
+
+        try:
+            from src.evaluation import visualize_tsne
+
+            # Create visualizations directory
+            viz_dir = save_dir / "visualizations"
+            viz_dir.mkdir(exist_ok=True)
+
+            # Visualize representations from final layer
+            if hasattr(model, 'ff_layers'):
+                # For hybrid models, visualize each FF layer
+                num_ff_layers = len(model.ff_layers)
+                for layer_idx in range(num_ff_layers):
+                    save_path = viz_dir / f"tsne_layer_{layer_idx}_{timestamp}.png"
+                    visualize_tsne(
+                        model=model,
+                        data_loader=test_loader,
+                        device=device,
+                        save_path=save_path,
+                        layer_index=layer_idx,
+                        max_samples=5000,
+                        title=f"t-SNE: Layer {layer_idx+1} Representations"
+                    )
+                    print(f"✓ Saved t-SNE for layer {layer_idx}: {save_path}")
+            else:
+                # For standard models, visualize final representations
+                save_path = viz_dir / f"tsne_final_{timestamp}.png"
+                visualize_tsne(
+                    model=model,
+                    data_loader=test_loader,
+                    device=device,
+                    save_path=save_path,
+                    max_samples=5000,
+                    title="t-SNE: Final Layer Representations"
+                )
+                print(f"✓ Saved t-SNE: {save_path}")
+
+        except Exception as e:
+            print(f"⚠️  t-SNE visualization failed: {e}")
 
     print("\n" + "=" * 80)
     print("EXPERIMENT COMPLETE")
