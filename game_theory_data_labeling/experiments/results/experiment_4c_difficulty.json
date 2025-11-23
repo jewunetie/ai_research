@@ -1,0 +1,264 @@
+{
+  "timestamp": "2025-11-23T03:44:23.917905",
+  "git_commit": "6caf71c014c0a6b06e3c46fea223f5366ed44354",
+  "experiments": {
+    "experiment_4c_task_difficulty": {
+      "majority_voting": {
+        "easy": {
+          "difficulty": "easy",
+          "agent_ability": 0.95,
+          "accuracy": 1.0,
+          "accuracy_std": 0.0,
+          "accuracy_ci": [
+            1.0,
+            1.0
+          ],
+          "total_payment": 500.0,
+          "payment_std": 0.0,
+          "quality_per_dollar": 0.002,
+          "num_runs": 15,
+          "raw_accuracies": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "hard": {
+          "difficulty": "hard",
+          "agent_ability": 0.7,
+          "accuracy": 0.906666666666667,
+          "accuracy_std": 0.05781195570314346,
+          "accuracy_ci": [
+            0.8774097804244061,
+            0.9359235529089278
+          ],
+          "total_payment": 500.0,
+          "payment_std": 0.0,
+          "quality_per_dollar": 0.001813333333333334,
+          "num_runs": 15,
+          "raw_accuracies": [
+            0.92,
+            0.92,
+            0.92,
+            0.94,
+            0.8,
+            0.92,
+            0.96,
+            0.92,
+            0.98,
+            0.82,
+            0.88,
+            0.88,
+            0.8,
+            0.98,
+            0.96
+          ]
+        }
+      },
+      "dawid_skene": {
+        "easy": {
+          "difficulty": "easy",
+          "agent_ability": 0.95,
+          "accuracy": 1.0,
+          "accuracy_std": 0.0,
+          "accuracy_ci": [
+            1.0,
+            1.0
+          ],
+          "total_payment": 487.62170176925446,
+          "payment_std": 3.0195189105645897,
+          "quality_per_dollar": 0.0020507700874913192,
+          "num_runs": 15,
+          "raw_accuracies": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "hard": {
+          "difficulty": "hard",
+          "agent_ability": 0.7,
+          "accuracy": 0.8893333333333334,
+          "accuracy_std": 0.06444291185917105,
+          "accuracy_ci": [
+            0.8567207202768736,
+            0.9219459463897932
+          ],
+          "total_payment": 425.20435377769337,
+          "payment_std": 5.8776100382670995,
+          "quality_per_dollar": 0.0020915433377671796,
+          "num_runs": 15,
+          "raw_accuracies": [
+            0.96,
+            0.9,
+            0.94,
+            0.92,
+            0.84,
+            0.92,
+            0.94,
+            0.9,
+            0.92,
+            0.76,
+            0.9,
+            0.88,
+            0.82,
+            0.98,
+            0.76
+          ]
+        }
+      },
+      "output_agreement": {
+        "easy": {
+          "difficulty": "easy",
+          "agent_ability": 0.95,
+          "accuracy": 1.0,
+          "accuracy_std": 0.0,
+          "accuracy_ci": [
+            1.0,
+            1.0
+          ],
+          "total_payment": 454.4,
+          "payment_std": 11.574685020912376,
+          "quality_per_dollar": 0.0022007042253521128,
+          "num_runs": 15,
+          "raw_accuracies": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "hard": {
+          "difficulty": "hard",
+          "agent_ability": 0.7,
+          "accuracy": 0.906666666666667,
+          "accuracy_std": 0.05781195570314346,
+          "accuracy_ci": [
+            0.8774097804244061,
+            0.9359235529089278
+          ],
+          "total_payment": 287.73333333333335,
+          "payment_std": 11.427841246515264,
+          "quality_per_dollar": 0.003151065801668212,
+          "num_runs": 15,
+          "raw_accuracies": [
+            0.92,
+            0.92,
+            0.92,
+            0.94,
+            0.8,
+            0.92,
+            0.96,
+            0.92,
+            0.98,
+            0.82,
+            0.88,
+            0.88,
+            0.8,
+            0.98,
+            0.96
+          ]
+        }
+      },
+      "rbts": {
+        "easy": {
+          "difficulty": "easy",
+          "agent_ability": 0.95,
+          "accuracy": 1.0,
+          "accuracy_std": 0.0,
+          "accuracy_ci": [
+            1.0,
+            1.0
+          ],
+          "total_payment": 773.6440153599066,
+          "payment_std": 15.742391634374217,
+          "quality_per_dollar": 0.0012925841603451044,
+          "num_runs": 15,
+          "raw_accuracies": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "hard": {
+          "difficulty": "hard",
+          "agent_ability": 0.7,
+          "accuracy": 0.906666666666667,
+          "accuracy_std": 0.05781195570314346,
+          "accuracy_ci": [
+            0.8774097804244061,
+            0.9359235529089278
+          ],
+          "total_payment": 569.2276357506422,
+          "payment_std": 12.40937068905643,
+          "quality_per_dollar": 0.0015928015607869124,
+          "num_runs": 15,
+          "raw_accuracies": [
+            0.92,
+            0.92,
+            0.92,
+            0.94,
+            0.8,
+            0.92,
+            0.96,
+            0.92,
+            0.98,
+            0.82,
+            0.88,
+            0.88,
+            0.8,
+            0.98,
+            0.96
+          ]
+        }
+      }
+    }
+  }
+}

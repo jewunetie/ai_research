@@ -1,0 +1,160 @@
+{
+  "timestamp": "2025-11-23T03:41:30.006265",
+  "git_commit": "6caf71c014c0a6b06e3c46fea223f5366ed44354",
+  "experiments": {
+    "experiment_4a_budget_constraints": {
+      "majority_voting": {
+        "5": {
+          "accuracy": 0.8700000000000001,
+          "accuracy_std": 0.03714835124201343,
+          "total_payment": 200.0,
+          "payment_std": 0.0,
+          "quality_per_dollar": 0.004350000000000001,
+          "within_budget": true,
+          "num_runs": 10
+        },
+        "10": {
+          "accuracy": 0.9620000000000001,
+          "accuracy_std": 0.022715633383201095,
+          "total_payment": 500.0,
+          "payment_std": 0.0,
+          "quality_per_dollar": 0.0019240000000000001,
+          "within_budget": true,
+          "num_runs": 10
+        },
+        "15": {
+          "accuracy": 0.9880000000000001,
+          "accuracy_std": 0.013266499161421611,
+          "total_payment": 700.0,
+          "payment_std": 0.0,
+          "quality_per_dollar": 0.0014114285714285715,
+          "within_budget": false,
+          "num_runs": 10
+        },
+        "20": {
+          "accuracy": 0.99,
+          "accuracy_std": 0.013416407864998751,
+          "total_payment": 1000.0,
+          "payment_std": 0.0,
+          "quality_per_dollar": 0.00099,
+          "within_budget": false,
+          "num_runs": 10
+        }
+      },
+      "dawid_skene": {
+        "5": {
+          "accuracy": 0.9160000000000001,
+          "accuracy_std": 0.038781438859330615,
+          "total_payment": 176.73861702802486,
+          "payment_std": 2.801197225504936,
+          "quality_per_dollar": 0.00518279488321872,
+          "within_budget": true,
+          "num_runs": 10
+        },
+        "10": {
+          "accuracy": 0.986,
+          "accuracy_std": 0.015620499351813323,
+          "total_payment": 434.4295227745903,
+          "payment_std": 4.908029318557343,
+          "quality_per_dollar": 0.0022696431718145444,
+          "within_budget": true,
+          "num_runs": 10
+        },
+        "15": {
+          "accuracy": 0.986,
+          "accuracy_std": 0.018000000000000016,
+          "total_payment": 613.3829954822917,
+          "payment_std": 4.243846911936129,
+          "quality_per_dollar": 0.0016074785366763005,
+          "within_budget": false,
+          "num_runs": 10
+        },
+        "20": {
+          "accuracy": 1.0,
+          "accuracy_std": 0.0,
+          "total_payment": 872.9125397017435,
+          "payment_std": 6.36751694643368,
+          "quality_per_dollar": 0.001145590141644293,
+          "within_budget": false,
+          "num_runs": 10
+        }
+      },
+      "output_agreement": {
+        "5": {
+          "accuracy": 0.8700000000000001,
+          "accuracy_std": 0.03714835124201343,
+          "total_payment": 122.5,
+          "payment_std": 8.224962005991275,
+          "quality_per_dollar": 0.007102040816326531,
+          "within_budget": true,
+          "num_runs": 10
+        },
+        "10": {
+          "accuracy": 0.9620000000000001,
+          "accuracy_std": 0.022715633383201095,
+          "total_payment": 305.1,
+          "payment_std": 12.541531007018241,
+          "quality_per_dollar": 0.0031530645689937724,
+          "within_budget": true,
+          "num_runs": 10
+        },
+        "15": {
+          "accuracy": 0.9880000000000001,
+          "accuracy_std": 0.013266499161421611,
+          "total_payment": 436.0,
+          "payment_std": 12.66491215919005,
+          "quality_per_dollar": 0.00226605504587156,
+          "within_budget": true,
+          "num_runs": 10
+        },
+        "20": {
+          "accuracy": 0.99,
+          "accuracy_std": 0.013416407864998751,
+          "total_payment": 611.4,
+          "payment_std": 9.308061022576076,
+          "quality_per_dollar": 0.001619234543670265,
+          "within_budget": false,
+          "num_runs": 10
+        }
+      },
+      "rbts": {
+        "5": {
+          "accuracy": 0.8700000000000001,
+          "accuracy_std": 0.03714835124201343,
+          "total_payment": 255.7111103018883,
+          "payment_std": 6.732572485243745,
+          "quality_per_dollar": 0.0034022768857125234,
+          "within_budget": true,
+          "num_runs": 10
+        },
+        "10": {
+          "accuracy": 0.9620000000000001,
+          "accuracy_std": 0.022715633383201095,
+          "total_payment": 582.4188391596164,
+          "payment_std": 13.125387778937657,
+          "quality_per_dollar": 0.001651732284944781,
+          "within_budget": false,
+          "num_runs": 10
+        },
+        "15": {
+          "accuracy": 0.9880000000000001,
+          "accuracy_std": 0.013266499161421611,
+          "total_payment": 818.1251667453987,
+          "payment_std": 8.647253826044656,
+          "quality_per_dollar": 0.0012076391732702516,
+          "within_budget": false,
+          "num_runs": 10
+        },
+        "20": {
+          "accuracy": 0.99,
+          "accuracy_std": 0.013416407864998751,
+          "total_payment": 1147.3283900306026,
+          "payment_std": 13.961906640697451,
+          "quality_per_dollar": 0.0008628741418780667,
+          "within_budget": false,
+          "num_runs": 10
+        }
+      }
+    }
+  }
+}

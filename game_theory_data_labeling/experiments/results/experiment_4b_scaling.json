@@ -1,0 +1,196 @@
+{
+  "timestamp": "2025-11-23T03:42:37.364999",
+  "git_commit": "6caf71c014c0a6b06e3c46fea223f5366ed44354",
+  "experiments": {
+    "experiment_4b_scaling_study": {
+      "majority_voting": {
+        "3": {
+          "accuracy": 0.8379999999999999,
+          "accuracy_std": 0.036276714294434104,
+          "total_payment": 100.0,
+          "payment_std": 0.0,
+          "cost_per_task": 2.0,
+          "quality_per_dollar": 0.008379999999999999,
+          "num_runs": 10
+        },
+        "5": {
+          "accuracy": 0.8700000000000001,
+          "accuracy_std": 0.03714835124201343,
+          "total_payment": 200.0,
+          "payment_std": 0.0,
+          "cost_per_task": 4.0,
+          "quality_per_dollar": 0.004350000000000001,
+          "num_runs": 10
+        },
+        "10": {
+          "accuracy": 0.9620000000000001,
+          "accuracy_std": 0.022715633383201095,
+          "total_payment": 500.0,
+          "payment_std": 0.0,
+          "cost_per_task": 10.0,
+          "quality_per_dollar": 0.0019240000000000001,
+          "num_runs": 10
+        },
+        "20": {
+          "accuracy": 0.99,
+          "accuracy_std": 0.013416407864998751,
+          "total_payment": 1000.0,
+          "payment_std": 0.0,
+          "cost_per_task": 20.0,
+          "quality_per_dollar": 0.00099,
+          "num_runs": 10
+        },
+        "50": {
+          "accuracy": 1.0,
+          "accuracy_std": 0.0,
+          "total_payment": 2500.0,
+          "payment_std": 0.0,
+          "cost_per_task": 50.0,
+          "quality_per_dollar": 0.0004,
+          "num_runs": 10
+        }
+      },
+      "dawid_skene": {
+        "3": {
+          "accuracy": 0.8699999999999999,
+          "accuracy_std": 0.03000000000000003,
+          "total_payment": 92.5255097114242,
+          "payment_std": 1.9729465764577874,
+          "cost_per_task": 1.850510194228484,
+          "quality_per_dollar": 0.009402812291587735,
+          "num_runs": 10
+        },
+        "5": {
+          "accuracy": 0.9160000000000001,
+          "accuracy_std": 0.038781438859330615,
+          "total_payment": 176.73861702802486,
+          "payment_std": 2.801197225504936,
+          "cost_per_task": 3.5347723405604974,
+          "quality_per_dollar": 0.00518279488321872,
+          "num_runs": 10
+        },
+        "10": {
+          "accuracy": 0.986,
+          "accuracy_std": 0.015620499351813323,
+          "total_payment": 434.4295227745903,
+          "payment_std": 4.908029318557343,
+          "cost_per_task": 8.688590455491806,
+          "quality_per_dollar": 0.0022696431718145444,
+          "num_runs": 10
+        },
+        "20": {
+          "accuracy": 1.0,
+          "accuracy_std": 0.0,
+          "total_payment": 872.9125397017435,
+          "payment_std": 6.36751694643368,
+          "cost_per_task": 17.45825079403487,
+          "quality_per_dollar": 0.001145590141644293,
+          "num_runs": 10
+        },
+        "50": {
+          "accuracy": 1.0,
+          "accuracy_std": 0.0,
+          "total_payment": 2180.0236351046724,
+          "payment_std": 9.124859158715037,
+          "cost_per_task": 43.60047270209345,
+          "quality_per_dollar": 0.00045871062308550873,
+          "num_runs": 10
+        }
+      },
+      "output_agreement": {
+        "3": {
+          "accuracy": 0.8379999999999999,
+          "accuracy_std": 0.036276714294434104,
+          "total_payment": 75.6,
+          "payment_std": 6.374950980203691,
+          "cost_per_task": 1.5119999999999998,
+          "quality_per_dollar": 0.011084656084656084,
+          "num_runs": 10
+        },
+        "5": {
+          "accuracy": 0.8700000000000001,
+          "accuracy_std": 0.03714835124201343,
+          "total_payment": 122.5,
+          "payment_std": 8.224962005991275,
+          "cost_per_task": 2.45,
+          "quality_per_dollar": 0.007102040816326531,
+          "num_runs": 10
+        },
+        "10": {
+          "accuracy": 0.9620000000000001,
+          "accuracy_std": 0.022715633383201095,
+          "total_payment": 305.1,
+          "payment_std": 12.541531007018241,
+          "cost_per_task": 6.102,
+          "quality_per_dollar": 0.0031530645689937724,
+          "num_runs": 10
+        },
+        "20": {
+          "accuracy": 0.99,
+          "accuracy_std": 0.013416407864998751,
+          "total_payment": 611.4,
+          "payment_std": 9.308061022576076,
+          "cost_per_task": 12.228,
+          "quality_per_dollar": 0.001619234543670265,
+          "num_runs": 10
+        },
+        "50": {
+          "accuracy": 1.0,
+          "accuracy_std": 0.0,
+          "total_payment": 1545.0,
+          "payment_std": 24.47856204927079,
+          "cost_per_task": 30.9,
+          "quality_per_dollar": 0.0006472491909385113,
+          "num_runs": 10
+        }
+      },
+      "rbts": {
+        "3": {
+          "accuracy": 0.8379999999999999,
+          "accuracy_std": 0.036276714294434104,
+          "total_payment": 152.40192685033196,
+          "payment_std": 4.4187792981360525,
+          "cost_per_task": 3.048038537006639,
+          "quality_per_dollar": 0.005498618142951482,
+          "num_runs": 10
+        },
+        "5": {
+          "accuracy": 0.8700000000000001,
+          "accuracy_std": 0.03714835124201343,
+          "total_payment": 255.7111103018883,
+          "payment_std": 6.732572485243745,
+          "cost_per_task": 5.114222206037766,
+          "quality_per_dollar": 0.0034022768857125234,
+          "num_runs": 10
+        },
+        "10": {
+          "accuracy": 0.9620000000000001,
+          "accuracy_std": 0.022715633383201095,
+          "total_payment": 582.4188391596164,
+          "payment_std": 13.125387778937657,
+          "cost_per_task": 11.648376783192328,
+          "quality_per_dollar": 0.001651732284944781,
+          "num_runs": 10
+        },
+        "20": {
+          "accuracy": 0.99,
+          "accuracy_std": 0.013416407864998751,
+          "total_payment": 1147.3283900306026,
+          "payment_std": 13.961906640697451,
+          "cost_per_task": 22.94656780061205,
+          "quality_per_dollar": 0.0008628741418780667,
+          "num_runs": 10
+        },
+        "50": {
+          "accuracy": 1.0,
+          "accuracy_std": 0.0,
+          "total_payment": 2829.863110806171,
+          "payment_std": 17.714466680020603,
+          "cost_per_task": 56.59726221612342,
+          "quality_per_dollar": 0.00035337398342039246,
+          "num_runs": 10
+        }
+      }
+    }
+  }
+}
