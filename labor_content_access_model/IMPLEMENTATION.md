@@ -200,7 +200,7 @@ pip install -r requirements.txt
 
 ```python
 from pydantic import BaseModel, Field
-from typing import Literal, Optional, Dict, Any
+from typing import Literal, Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
 
@@ -292,11 +292,19 @@ class UserAgent(BaseModel):
 
     # Labeling ability (simulated skill level)
     base_accuracy: float = Field(ge=0, le=1, default=0.85)  # Base accuracy on easy tasks
-    difficulty_penalty: Dict[TaskDifficulty, float] = {
-        TaskDifficulty.EASY: 0.0,
-        TaskDifficulty.MEDIUM: 0.1,
-        TaskDifficulty.HARD: 0.2
-    }
+
+    # Note: difficulty_penalty should be set in __init__ or use Field(default_factory=...)
+    # to avoid mutable default issues
+    difficulty_penalty: Optional[Dict[TaskDifficulty, float]] = None
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        if self.difficulty_penalty is None:
+            self.difficulty_penalty = {
+                TaskDifficulty.EASY: 0.0,
+                TaskDifficulty.MEDIUM: 0.1,
+                TaskDifficulty.HARD: 0.2
+            }
 
     def make_choice(self, content_value: float, ad_time: float,
                     payment_cost: float, task_count: int,
@@ -708,20 +716,35 @@ class MarketplaceEngine:
 **File**: `src/quality/quality_control.py`
 
 ```python
+import numpy as np
 from sklearn.metrics import cohen_kappa_score
 from collections import Counter
+from typing import Dict, Any, List
 
 class QualityControlSystem:
     """
     Validates labels and computes quality metrics
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], marketplace=None):
         self.config = config
         self.redundancy_factor = config.get("redundancy_factor", 3)
+        self.marketplace = marketplace  # Reference to get tasks
 
         # Storage for multi-label consensus
         self.task_labels: Dict[str, list[Label]] = {}
+        self.tasks: Dict[str, Task] = {}  # Cache of tasks for lookup
+
+    def get_task(self, task_id: str) -> Task:
+        """Retrieve task by ID from cache or marketplace"""
+        if task_id in self.tasks:
+            return self.tasks[task_id]
+        elif self.marketplace:
+            task = self.marketplace.task_inventory.get(task_id)
+            if task:
+                self.tasks[task_id] = task
+                return task
+        raise ValueError(f"Task {task_id} not found")
 
     def process_labels(self, labels: list[Label]) -> float:
         """
@@ -769,8 +792,10 @@ class QualityControlSystem:
             base_payment = task.price_per_label * len(labels)
 
             # Bonus for exceptional quality
+            # Get bonus multiplier from config (default 1.5)
+            bonus_multiplier = self.config.get("quality_bonus_multiplier", 1.5)
             if kappa > 0.75:
-                payment = base_payment * task.quality_multiplier
+                payment = base_payment * bonus_multiplier
             else:
                 payment = base_payment
 
@@ -931,6 +956,8 @@ class RevenueEngine:
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from collections import Counter
+from typing import Dict, Any, List
 
 class MetricsCollector:
     """
@@ -1007,9 +1034,15 @@ class MetricsCollector:
         axes[1, 0].set_xlabel("Time (seconds)")
 
         # 4. Quality metrics over time
-        axes[1, 1].plot(labor_sessions.index, labor_sessions["avg_label_quality"])
-        axes[1, 1].set_title("Label Quality Over Time")
-        axes[1, 1].set_ylabel("Fleiss' Kappa")
+        # Filter out None values for quality plotting
+        quality_data = labor_sessions[labor_sessions["avg_label_quality"].notna()]
+        if len(quality_data) > 0:
+            axes[1, 1].plot(quality_data.index, quality_data["avg_label_quality"])
+            axes[1, 1].set_title("Label Quality Over Time")
+            axes[1, 1].set_ylabel("Fleiss' Kappa")
+        else:
+            axes[1, 1].text(0.5, 0.5, "No quality data available",
+                           ha='center', va='center', transform=axes[1, 1].transAxes)
 
         plt.tight_layout()
         plt.savefig(f"{output_dir}/simulation_results.png", dpi=300)
@@ -1151,7 +1184,7 @@ class MetricsCollector:
    - Run baseline simulation (10k events)
    - Run parameter sweeps:
      - Vary pricing ($0.01-$0.50 per label)
-     - Vary user distributions (10-50% task preferrs)
+     - Vary user distributions (10-50% task preferers)
      - Vary quality requirements (0.60-0.80 kappa)
    - Collect results
 
