@@ -449,8 +449,8 @@ class Task(BaseModel):
 **File: `src/tcoml/agent/tools.py`**
 
 ```python
-from typing import Any, Callable, Dict, List
-from pydantic import BaseModel
+from typing import Any, Callable, Dict, List, Optional
+from pydantic import BaseModel, Field
 
 
 class ToolParameter(BaseModel):
@@ -738,7 +738,7 @@ class SyntheticTaskGenerator:
 **File: `src/tcoml/agent/tool_registry.py`**
 
 ```python
-from typing import Dict
+from typing import Dict, List
 from .tools import Tool, ToolParameter
 
 
@@ -759,7 +759,7 @@ class ToolRegistry:
             raise ValueError(f"Tool '{name}' not found")
         return self.tools[name]
 
-    def list_tools(self) -> list[str]:
+    def list_tools(self) -> List[str]:
         """List all available tool names"""
         return list(self.tools.keys())
 
@@ -937,7 +937,7 @@ class TraceDataset(BaseModel):
 
 ```python
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from .trace_models import ExecutionTrace, ToolCall
 from ..agent.tool_registry import ToolRegistry
 
@@ -1690,6 +1690,7 @@ Format your response with clear sections:
 ```python
 from typing import List, Dict, Any
 from collections import Counter
+from pydantic import BaseModel
 from ..llm.base_client import BaseLLMClient, Message
 from .feedback_generator import Feedback
 
@@ -1896,7 +1897,7 @@ print(aggregated.summary)
 **File: `src/tcoml/optimization/meta_prompter.py`**
 
 ```python
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel
 from ..llm.base_client import BaseLLMClient, Message
 from ..feedback.feedback_aggregator import AggregatedFeedback
@@ -2444,7 +2445,6 @@ print(f"Improvement: {result.final_success_rate - result.initial_success_rate:+.
 ```python
 import numpy as np
 from typing import List, Dict, Any
-from scipy import stats
 from ..tracing.trace_models import ExecutionTrace, TraceDataset
 
 
