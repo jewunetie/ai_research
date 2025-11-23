@@ -49,6 +49,9 @@ data/results/*.json
 data/results/*.csv
 !data/results/.gitkeep
 
+# Evaluation results
+results/
+
 # MLX/Model cache
 .cache/
 models/
