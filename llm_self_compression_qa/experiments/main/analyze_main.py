@@ -128,10 +128,12 @@ def compare_conditions(df: pd.DataFrame, condition_a: str, condition_b: str):
     # Paired t-test
     t_stat, p_value = stats.ttest_rel(aligned_df["a"], aligned_df["b"])
 
-    # Effect size (Cohen's d)
+    # Effect size (Cohen's d for paired data)
+    # For paired data, use SD of differences, not pooled SD
     mean_diff = aligned_df["a"].mean() - aligned_df["b"].mean()
-    pooled_std = ((aligned_df["a"].std()**2 + aligned_df["b"].std()**2) / 2) ** 0.5
-    cohens_d = mean_diff / pooled_std if pooled_std > 0 else 0
+    diff = aligned_df["a"] - aligned_df["b"]
+    std_diff = diff.std()
+    cohens_d = mean_diff / std_diff if std_diff > 0 else 0
 
     return {
         "condition_a": condition_a,

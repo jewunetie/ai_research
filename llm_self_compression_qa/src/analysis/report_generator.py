@@ -132,10 +132,10 @@ class ReportGenerator:
         summary.append("")
 
         # Best performing condition
-        if isinstance(statistics, pd.DataFrame) and 'f1' in statistics.columns:
-            # Get the best condition by F1 score
-            best_idx = statistics[('f1', 'mean')].idxmax() if ('f1', 'mean') in statistics.columns else None
-            if best_idx:
+        if isinstance(statistics, pd.DataFrame) and not statistics.empty:
+            # Check if multi-level columns from groupby().agg()
+            if ('f1', 'mean') in statistics.columns:
+                best_idx = statistics[('f1', 'mean')].idxmax()
                 best_f1 = statistics.loc[best_idx, ('f1', 'mean')]
                 summary.append(f"**Key Finding:** The best-performing condition was **{best_idx}** with an average F1 score of **{best_f1:.4f}**.")
                 summary.append("")
@@ -542,32 +542,42 @@ class ReportGenerator:
         """
         Simple markdown to HTML conversion.
 
-        Note: For production use, consider using a library like markdown or mistune
+        Note: For production use, consider using a library like markdown or mistune.
+        This is a basic implementation that handles common markdown elements.
         """
-        # Very basic conversion (for demonstration)
-        # In production, use a proper markdown library
+        import re
 
         html = markdown
 
-        # Headers
-        html = html.replace('### ', '<h3>').replace('\n\n', '</h3>\n\n')
-        html = html.replace('## ', '<h2>').replace('\n\n', '</h2>\n\n')
-        html = html.replace('# ', '<h1>').replace('\n\n', '</h1>\n\n')
-
-        # Bold
-        import re
-        html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
-
-        # Lists
-        html = re.sub(r'\n- (.*?)(?=\n[^-]|\n\n|$)', r'\n<li>\1</li>', html)
-        html = re.sub(r'(<li>.*?</li>\n)+', r'<ul>\n\g<0></ul>\n', html, flags=re.DOTALL)
-
-        # Paragraphs
-        html = re.sub(r'\n\n([^<\n])', r'\n<p>\1', html)
-        html = re.sub(r'([^>])\n\n', r'\1</p>\n\n', html)
-
-        # Code blocks
+        # Code blocks (process first to avoid interference with other patterns)
         html = re.sub(r'```(.*?)```', r'<pre><code>\1</code></pre>', html, flags=re.DOTALL)
         html = re.sub(r'`(.*?)`', r'<code>\1</code>', html)
+
+        # Headers (use multiline mode to match line-by-line)
+        html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
+        html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
+        html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
+
+        # Bold
+        html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
+
+        # Lists (simple approach - wrap consecutive list items)
+        # Convert markdown list items to HTML list items
+        html = re.sub(r'(?m)^- (.+)$', r'<li>\1</li>', html)
+        # Wrap consecutive <li> tags in <ul>
+        html = re.sub(r'(<li>.*?</li>(?:\n<li>.*?</li>)*)', r'<ul>\n\1\n</ul>', html, flags=re.DOTALL)
+
+        # Paragraphs (simple: any text not already in tags gets wrapped in <p>)
+        # This is a simplified approach - proper markdown parsing would be more complex
+        lines = html.split('\n\n')
+        processed_lines = []
+        for line in lines:
+            line = line.strip()
+            if line and not line.startswith('<'):
+                # Only wrap in <p> if not already an HTML tag
+                processed_lines.append(f'<p>{line}</p>')
+            else:
+                processed_lines.append(line)
+        html = '\n\n'.join(processed_lines)
 
         return html
