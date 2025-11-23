@@ -10,6 +10,43 @@ All necessary datasets, simulation tools, and baseline metrics are readily avail
 
 ## 1. Available Datasets for Testing Labeling Tasks
 
+### Quick Start: Downloading Datasets
+
+**Installation Requirements**:
+```bash
+# Install Hugging Face datasets library
+pip install datasets transformers torch
+
+# Or using uv (as specified in CLAUDE.md)
+uv pip install datasets transformers torch
+```
+
+**Python Version**: 3.8+ (recommended: 3.10 or 3.11)
+
+**Downloading Datasets**:
+```python
+from datasets import load_dataset
+
+# Load datasets (downloads automatically on first use)
+mnist = load_dataset("mnist")
+cifar10 = load_dataset("cifar10")
+sst2 = load_dataset("stanfordnlp/sst2")
+```
+
+**Storage Requirements** (per dataset):
+- MNIST: ~12 MB
+- CIFAR-10: ~163 MB
+- SST-2: ~7 MB
+- Fashion-MNIST: ~29 MB
+- CoNLLpp: ~1 MB
+- ImageNet-1K: ~150 GB (requires manual download due to licensing)
+- Audio datasets: Varies (100 MB - 5 GB)
+
+**Total for Phase 1 (MNIST + CIFAR-10 + SST-2)**: ~182 MB
+**Download Time**: 5-10 minutes on typical broadband connection
+
+---
+
 ### Image Classification Datasets (All Free on Hugging Face)
 
 #### **MNIST** (`ylecun/mnist` or `mnist`)
@@ -152,13 +189,14 @@ All necessary datasets, simulation tools, and baseline metrics are readily avail
 
 **Modern Approach (2024)**
 - **Method**: Use LLMs (GPT-4, Claude) to simulate user behavior
-- **Validation**: "Proven they can predict human behavior accurately"
+- **Validation**: Shown to predict human behavior accurately in specific tested scenarios (survey responses, purchasing decisions, social interactions)
 - **Cost**: Low-cost compared to real user studies
 - **Speed**: Fast behavioral experiments
 - **Source**: syntheticusers.com, "Generative agent simulations of 1,000 people"
 - **Implementation**: Persona prompting + autonomous agents
+- **Limitation**: Best for structured decision-making; may not capture all nuances of novel behaviors
 
-**Key Finding**: "LLM-powered Synthetic Users have crossed from concept to validated method"
+**Key Finding**: "LLM-powered Synthetic Users have crossed from concept to validated method" for tested use cases, though extrapolation to entirely new domains should be done cautiously
 
 ### Simulation Strategy for This Project
 
@@ -214,7 +252,7 @@ All necessary datasets, simulation tools, and baseline metrics are readily avail
 - **Interpretation (Fleiss)**:
   - <0.40: Poor
   - 0.40-0.75: Fair to good
-  - \>0.75: Excellent ← **Target for this project**
+  - >0.75: Excellent ← **Target for this project**
 - **Availability**: Standard in sklearn, statsmodels
 - **Literature Benchmark**: 0.737 considered substantial (study with 1,438 messages)
 
@@ -256,10 +294,11 @@ All necessary datasets, simulation tools, and baseline metrics are readily avail
 ### Specific Task Baselines
 
 #### **Image Classification**
-- **CIFAR-10 Human Accuracy**: ~94% (expert annotators)
-- **ImageNet Human Accuracy**: ~95% (expert annotators)
+- **CIFAR-10 Human Accuracy**: ~94% (expert annotators, from ML literature)
+- **ImageNet Human Accuracy**: ~95% (expert annotators, from ML literature)
 - **Crowdsourced Baseline**: 85-90% with majority vote (3+ annotators)
 - **Target for Access-Motivated Labeling**: >80% accuracy vs. ground truth
+- **Note**: Expert baselines from general computer vision literature; exact values vary by study
 
 #### **Sentiment Analysis (SST-2)**
 - **Expert Agreement**: ~85-90%
@@ -346,7 +385,9 @@ All necessary datasets, simulation tools, and baseline metrics are readily avail
 - **Problem**: Need realistic pricing for labels to calculate revenue
 - **Impact**: Medium - affects economic viability assessment
 - **Mitigation**:
-  - Use MTurk pricing as baseline (€5-€20 simple, €30-€50 complex)
+  - Use industry per-label pricing: $0.01-$0.50 per label (from data labeling services like Scale AI, Labelbox)
+  - Note: MTurk pays €5-€50 per HIT (task), but each HIT typically contains 10-100 labels, making per-label cost €0.05-€5
+  - For this simulation, we'll use market rate per-label pricing ($0.01-$0.50)
   - Literature on crowdsourcing economics provides benchmarks
   - CPM data from research ($3.12-$8.60)
   - Simulate various pricing scenarios
@@ -402,11 +443,13 @@ All necessary datasets, simulation tools, and baseline metrics are readily avail
 
 ### Synthetic User Profiles (Agent-Based Model)
 
-**User Types** (based on literature):
+**User Types** (estimated distributions for initial modeling):
 1. **Task Avoider** (40%): Strongly prefers ads, rarely chooses labor
 2. **Balanced** (35%): Chooses based on task difficulty and time
 3. **Task Preferer** (15%): Prefers labor over ads (privacy-conscious, ad-blockers)
 4. **Payment Preferer** (10%): Willing to pay to avoid both ads and labor
+
+**Note**: These percentages are hypothetical starting points for simulation. Actual distribution unknown and should be validated through real user studies or calibrated based on social locker adoption rates from literature.
 
 **Behavioral Parameters**:
 - Time sensitivity (low/medium/high)
@@ -445,11 +488,12 @@ All necessary datasets, simulation tools, and baseline metrics are readily avail
 - NER (15% of tasks)
 - Audio (5% of tasks)
 
-**Pricing Model** (from literature):
-- Simple tasks: $0.01-0.05 per label
-- Medium tasks: $0.05-0.15 per label
-- Complex tasks: $0.15-0.50 per label
+**Pricing Model** (based on industry data labeling services):
+- Simple tasks: $0.01-0.05 per label (e.g., image classification on clear images)
+- Medium tasks: $0.05-0.15 per label (e.g., sentiment analysis, basic NER)
+- Complex tasks: $0.15-0.50 per label (e.g., fine-grained NER, emotion recognition)
 - Quality multiplier: 1.5× for >0.75 kappa
+- **Source**: Market rates from Scale AI, Labelbox, and crowdsourcing literature; per-label costs derived from typical per-task rates divided by labels per task
 
 ---
 
@@ -490,7 +534,12 @@ All necessary datasets, simulation tools, and baseline metrics are readily avail
 
 All necessary data, tools, and benchmarks are available. The project can proceed to implementation design without data-related risks.
 
-**Estimated data download size**: ~2-3 GB total (MNIST + CIFAR-10 + SST-2 + models)
+**Estimated data download size**:
+- Phase 1 datasets: ~182 MB (MNIST + CIFAR-10 + SST-2)
+- Phase 2 with additional datasets: ~500 MB - 1 GB
+- With pre-trained models: ~2-3 GB total
+- Phase 1 download time: 5-10 minutes on broadband
+
 **Estimated computation requirements**: Modest (CPU sufficient, GPU optional for faster processing)
 **Estimated development time**: 6-8 weeks for full prototype with comprehensive evaluation
 
