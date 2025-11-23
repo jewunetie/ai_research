@@ -169,12 +169,13 @@ class UserAgentMesa(Agent):
         if is_correct:
             submitted_label = task.ground_truth_label
         else:
-            # Submit wrong answer
-            possible_labels = [l for l in task.possible_labels if l != str(task.ground_truth_label)]
-            if possible_labels:
-                submitted_label = random.choice(possible_labels)
+            # Submit wrong answer (filter out correct answer)
+            wrong_labels = [l for l in task.possible_labels if l != task.ground_truth_label]
+            if wrong_labels:
+                submitted_label = random.choice(wrong_labels)
             else:
-                submitted_label = task.ground_truth_label  # Fallback
+                # Edge case: only one possible label, so just submit it
+                submitted_label = task.ground_truth_label
 
         # Simulate time taken (with some variance)
         time_taken = task.estimated_time_seconds * random.uniform(0.8, 1.2)

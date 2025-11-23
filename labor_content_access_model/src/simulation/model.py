@@ -8,7 +8,7 @@ from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
 
 from src.data.schemas import (
-    UserType, CreatorSize, CompanySize, TaskType, ContentAccessSession
+    UserType, CreatorSize, CompanySize, TaskType, TaskDifficulty, ContentAccessSession
 )
 from src.agents.user_agent import UserAgentMesa
 from src.agents.creator_agent import CreatorAgentMesa
@@ -194,8 +194,6 @@ class LaborContentAccessModel(Model):
                                               pricing.get("medium", [0.05, 0.15])[1])
             hard_price = self.random.uniform(pricing.get("hard", [0.15, 0.50])[0],
                                             pricing.get("hard", [0.15, 0.50])[1])
-
-            from src.data.schemas import TaskDifficulty
 
             company = CompanyAgentMesa(
                 unique_id=agent_id,

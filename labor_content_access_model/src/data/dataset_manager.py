@@ -141,8 +141,9 @@ class DatasetManager:
         # Determine difficulty
         difficulty = self._get_difficulty(dataset_name)
 
-        # Get ground truth label
-        ground_truth_label = item['label']
+        # Get ground truth label (convert to string for consistency)
+        ground_truth_label_int = item['label']
+        ground_truth_label = str(ground_truth_label_int)
 
         # Get possible labels
         possible_labels = self.label_mappings[dataset_name]

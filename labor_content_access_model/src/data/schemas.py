@@ -1,6 +1,6 @@
 """Data schemas for the labor-for-content-access system"""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Literal, Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
@@ -105,17 +105,19 @@ class UserAgent(BaseModel):
     # Labeling ability (simulated skill level)
     base_accuracy: float = Field(ge=0, le=1, default=0.85)  # Base accuracy on easy tasks
 
-    # Note: difficulty_penalty should be set in __init__ to avoid mutable default issues
+    # Difficulty penalty (set via model_validator to avoid mutable default)
     difficulty_penalty: Optional[Dict[TaskDifficulty, float]] = None
 
-    def __init__(self, **data):
-        super().__init__(**data)
+    @model_validator(mode='after')
+    def set_default_difficulty_penalty(self):
+        """Set default difficulty penalty if not provided"""
         if self.difficulty_penalty is None:
             self.difficulty_penalty = {
                 TaskDifficulty.EASY: 0.0,
                 TaskDifficulty.MEDIUM: 0.1,
                 TaskDifficulty.HARD: 0.2
             }
+        return self
 
 
 class CreatorSize(str, Enum):

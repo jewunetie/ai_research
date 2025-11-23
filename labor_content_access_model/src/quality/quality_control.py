@@ -151,6 +151,11 @@ class QualityControlSystem:
         # Rough kappa approximation (simplified)
         # Real: use statsmodels.stats.inter_rater.fleiss_kappa
         num_categories = len(set(labels))
+
+        # Handle perfect agreement (all labels identical)
+        if num_categories == 1:
+            return 1.0
+
         expected_agreement = 1.0 / num_categories
         kappa = (agreement - expected_agreement) / (1 - expected_agreement)
 

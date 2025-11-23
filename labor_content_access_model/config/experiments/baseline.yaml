@@ -1,0 +1,88 @@
+# Baseline Experiment Configuration
+# Standard simulation with default parameters
+
+simulation:
+  random_seed: 42
+  num_steps: 10000
+  output_dir: "./results/baseline"
+
+datasets:
+  mnist:
+    enabled: true
+    split: "test"
+  cifar10:
+    enabled: true
+    split: "test"
+  sst2:
+    enabled: true
+    split: "validation"
+
+agents:
+  users:
+    count: 1000
+    distribution:
+      task_avoider: 0.40
+      balanced: 0.35
+      task_preferer: 0.15
+      payment_preferer: 0.10
+
+    behavioral_params:
+      time_sensitivity:
+        low: 0.33
+        medium: 0.34
+        high: 0.33
+      base_accuracy: 0.85
+
+  creators:
+    count: 100
+    distribution:
+      small: 0.50
+      medium: 0.35
+      large: 0.15
+
+    size_params:
+      small:
+        monthly_visitors: [1000, 10000]
+        current_cpm: [3.12, 5.00]
+      medium:
+        monthly_visitors: [10000, 100000]
+        current_cpm: [4.00, 7.00]
+      large:
+        monthly_visitors: [100000, 1000000]
+        current_cpm: [6.00, 8.60]
+
+    labor_task_count: 5
+
+  companies:
+    count: 10
+    distribution:
+      startup: 0.40
+      midsize: 0.40
+      enterprise: 0.20
+
+    pricing:
+      easy: [0.01, 0.05]
+      medium: [0.05, 0.15]
+      hard: [0.15, 0.50]
+
+    quality_requirements:
+      startup: 0.65
+      midsize: 0.70
+      enterprise: 0.75
+
+marketplace:
+  redundancy_factor: 3
+  quality_bonus_multiplier: 1.5
+
+revenue:
+  platform_share: 0.20
+  creator_share: 0.70
+  user_share: 0.10
+
+quality_control:
+  min_fleiss_kappa: 0.70
+  consensus_method: "majority_vote"
+
+logging:
+  level: "INFO"
+  file: "./logs/baseline_simulation.log"
