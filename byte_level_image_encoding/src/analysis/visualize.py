@@ -26,7 +26,7 @@ import numpy as np
 
 
 # Set publication style
-plt.style.use('seaborn-v0_8-paper')
+plt.style.use('seaborn-v0_8-whitegrid')
 sns.set_palette("husl")
 
 

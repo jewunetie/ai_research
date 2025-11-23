@@ -69,8 +69,10 @@ class ByteFormer(nn.Module):
             padding=downsample_kernel // 2
         )
 
-        # Calculate downsampled sequence length
-        self.seq_len = math.ceil(max_bytes / downsample_stride)
+        # Calculate downsampled sequence length using Conv1d output formula
+        # output_length = floor((input + 2*padding - kernel) / stride + 1)
+        padding = downsample_kernel // 2
+        self.seq_len = (max_bytes + 2 * padding - downsample_kernel) // downsample_stride + 1
 
         # 3. Positional encoding (learnable)
         self.pos_encoding = nn.Parameter(
