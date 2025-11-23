@@ -5,7 +5,7 @@ These metrics measure how well reasoning steps avoid overlap and redundancy.
 Higher scores indicate better mutual exclusivity.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
@@ -157,7 +157,7 @@ class MutualExclusivityScorer:
         self,
         steps: List[str],
         verbose: bool = False
-    ) -> tuple[float, float]:
+    ) -> Tuple[float, float]:
         """
         Compute ME score based on embedding similarity.
 
@@ -226,7 +226,7 @@ class MutualExclusivityScorer:
         self,
         steps: List[str],
         verbose: bool = False
-    ) -> tuple[float, int, int]:
+    ) -> Tuple[float, int, int]:
         """
         Compute ME score based on case condition overlap.
 

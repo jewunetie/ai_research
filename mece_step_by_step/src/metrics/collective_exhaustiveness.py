@@ -5,8 +5,9 @@ These metrics measure how well reasoning steps cover all necessary cases
 and arrive at complete solutions.
 """
 
-from typing import List, Dict, Any, Set
-from .parsers import parse_reasoning_steps, extract_case_conditions, parse_solutions
+import re
+from typing import List, Dict, Any, Set, Tuple
+from .parsers import parse_reasoning_steps, extract_case_conditions, parse_solutions, normalize_solution
 
 
 class CollectiveExhaustivenessScorer:
@@ -141,7 +142,7 @@ class CollectiveExhaustivenessScorer:
         detected_conditions: List[str],
         required_cases: List[str],
         verbose: bool = False
-    ) -> tuple[float, int, List[str]]:
+    ) -> Tuple[float, int, List[str]]:
         """
         Compute CE score based on case enumeration.
 
@@ -208,7 +209,7 @@ class CollectiveExhaustivenessScorer:
         response: str,
         ground_truth_solutions: List[str],
         verbose: bool = False
-    ) -> tuple[float, int, List[str]]:
+    ) -> Tuple[float, int, List[str]]:
         """
         Compute CE score based on solution coverage.
 
@@ -237,15 +238,15 @@ class CollectiveExhaustivenessScorer:
             print(f"    Ground truth: {ground_truth_solutions}")
 
         # Normalize solutions for comparison
-        detected_normalized = {self._normalize_solution(s) for s in detected_solutions}
-        gt_normalized = [self._normalize_solution(s) for s in ground_truth_solutions]
+        detected_normalized = {normalize_solution(s) for s in detected_solutions}
+        gt_normalized = [normalize_solution(s) for s in ground_truth_solutions]
 
         # Find matches
         found_solutions = []
         missing_solutions = []
 
         for gt_sol in ground_truth_solutions:
-            gt_norm = self._normalize_solution(gt_sol)
+            gt_norm = normalize_solution(gt_sol)
 
             # Check if this solution was found
             is_found = gt_norm in detected_normalized
@@ -276,8 +277,6 @@ class CollectiveExhaustivenessScorer:
         Returns:
             Normalized condition string
         """
-        import re
-
         # Remove extra whitespace
         normalized = re.sub(r'\s+', ' ', condition.strip())
 
@@ -286,32 +285,6 @@ class CollectiveExhaustivenessScorer:
 
         # Convert to lowercase
         normalized = normalized.lower()
-
-        return normalized
-
-    def _normalize_solution(self, solution: str) -> str:
-        """
-        Normalize a solution string for comparison.
-
-        Args:
-            solution: Solution string (e.g., "x = 3", "x=3")
-
-        Returns:
-            Normalized solution string
-        """
-        import re
-
-        # Remove extra whitespace
-        normalized = re.sub(r'\s+', ' ', solution.strip())
-
-        # Normalize spacing around equals
-        normalized = re.sub(r'([a-zA-Z])\s*=\s*', r'\1 = ', normalized)
-
-        # Convert to lowercase
-        normalized = normalized.lower()
-
-        # Handle special cases like √3
-        # Keep unicode characters for now
 
         return normalized
 
@@ -338,7 +311,6 @@ class CollectiveExhaustivenessScorer:
         # This is a simple heuristic - perfect matching would require symbolic math
 
         # Extract variable, operator, and value
-        import re
         pattern = r'([a-z]+)\s*([<>=]+)\s*([\-0-9]+)'
 
         match1 = re.search(pattern, cond1)
