@@ -69,3 +69,16 @@ class LazyAgent(Agent):
             return 1 if self.rng.random() < task.prior_prob else 0
         else:
             raise ValueError(f"Unknown lazy strategy: {self.strategy}")
+
+    def predict_others(self, task: Task) -> dict[int, float]:
+        """Predict distribution of others' reports (for RBTS).
+
+        Args:
+            task: The task
+
+        Returns:
+            dict mapping label -> predicted probability
+        """
+        # Lazy agent doesn't know what others will do
+        # Predicts uniform distribution
+        return {0: 0.5, 1: 0.5}

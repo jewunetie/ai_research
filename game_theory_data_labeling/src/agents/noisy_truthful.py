@@ -1,31 +1,36 @@
-"""Truthful agent implementation."""
+"""Noisy truthful agent implementation."""
 
+from typing import TYPE_CHECKING
+import numpy as np
 from src.agents.base import Agent, AgentParams
 from src.tasks.base import Task
-from src.mechanisms.base import Mechanism
-import numpy as np
+
+if TYPE_CHECKING:
+    from src.mechanisms.base import Mechanism
 
 
-class TruthfulAgent(Agent):
-    """Agent that always reports their observation.
+class NoisyTruthfulAgent(Agent):
+    """Agent that is truthful but has noisy observations.
 
     This agent:
-    - Observes the task with accuracy = ability
+    - Observes with noise (accuracy = ability)
     - Always reports their observation truthfully
-    - Does not strategize about payments
+    - Represents well-intentioned but less skilled annotators
+
+    Note: This is essentially the same as TruthfulAgent, but
+    conceptually separated for clarity in agent mix descriptions.
     """
 
     def observe(self, task: Task) -> int:
-        """Observe with accuracy = self.params.ability.
+        """Observe with noise based on ability.
 
         Args:
             task: The task to observe
 
         Returns:
-            signal: Observed label (0 or 1)
+            signal: Noisy observation (0 or 1)
         """
         # With probability = ability, observe correctly
-        # Otherwise, observe incorrectly
         if self.rng.random() < self.params.ability:
             return task.true_label
         else:
@@ -35,16 +40,16 @@ class TruthfulAgent(Agent):
         self,
         task: Task,
         signal: int,
-        mechanism: Mechanism,
+        mechanism: "Mechanism",
         other_agents: list[Agent],
     ) -> int:
-        """Truthful agent always reports their signal.
+        """Truthfully report observation.
 
         Args:
-            task: The task to label
-            signal: Agent's observation
-            mechanism: The mechanism (ignored by truthful agent)
-            other_agents: Other agents (ignored by truthful agent)
+            task: The task
+            signal: Agent's noisy observation
+            mechanism: The mechanism (ignored)
+            other_agents: Other agents (ignored)
 
         Returns:
             report: The signal (truthful reporting)
@@ -60,6 +65,6 @@ class TruthfulAgent(Agent):
         Returns:
             dict mapping label -> predicted probability
         """
-        # Truthful agent predicts based on task prior
+        # Noisy truthful agent predicts based on task prior
         # (Assumes others are also somewhat truthful)
         return {0: 1 - task.prior_prob, 1: task.prior_prob}

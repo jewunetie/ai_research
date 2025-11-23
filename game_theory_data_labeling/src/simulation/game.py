@@ -8,9 +8,14 @@ from src.tasks.base import Task, TaskGenerator
 from src.agents.base import Agent, AgentParams
 from src.agents.truthful import TruthfulAgent
 from src.agents.lazy import LazyAgent
+from src.agents.strategic import StrategicAgent
+from src.agents.adversarial import AdversarialAgent
+from src.agents.noisy_truthful import NoisyTruthfulAgent
 from src.mechanisms.base import Mechanism, Report, MechanismResult
 from src.mechanisms.majority_voting import MajorityVoting
 from src.mechanisms.dawid_skene import DawidSkene
+from src.mechanisms.output_agreement import OutputAgreement
+from src.mechanisms.rbts import RBTS
 
 
 @dataclass
@@ -116,6 +121,12 @@ class Game:
             return TruthfulAgent(params, rng)
         elif agent_type == "lazy":
             return LazyAgent(params, rng, strategy="random")
+        elif agent_type == "strategic":
+            return StrategicAgent(params, rng)
+        elif agent_type == "adversarial":
+            return AdversarialAgent(params, rng, strategy="random")
+        elif agent_type == "noisy_truthful":
+            return NoisyTruthfulAgent(params, rng)
         else:
             raise ValueError(f"Unknown agent type: {agent_type}")
 
@@ -127,6 +138,10 @@ class Game:
             return MajorityVoting(config)
         elif self.config.mechanism_name == "dawid_skene":
             return DawidSkene(config)
+        elif self.config.mechanism_name == "output_agreement":
+            return OutputAgreement(config)
+        elif self.config.mechanism_name == "rbts":
+            return RBTS(config)
         else:
             raise ValueError(f"Unknown mechanism: {self.config.mechanism_name}")
 
