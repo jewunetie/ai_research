@@ -1,0 +1,43 @@
+# Block-wise Hybrid Training on MNIST (SFF Replication)
+# Divides network into blocks with auxiliary classifiers
+# Gradients detached between blocks
+
+experiment:
+  name: "mnist_block_wise"
+  approach: "block_wise"
+  seed: 42
+  device: "auto"
+
+data:
+  dataset: "mnist"
+  batch_size: 512
+  num_workers: 4
+  normalize: true
+
+model:
+  architecture: "block_wise"
+  input_dim: 784
+  block_dims: [[500, 500], [500]]  # Block 1: 2 layers, Block 2: 1 layer
+  num_classes: 10
+  activation: "relu"
+  dropout: 0.0
+  batch_norm: false
+
+training:
+  approach: "block_wise"
+  num_epochs: 150  # Per SFF paper
+  learning_rate: 0.001
+  optimizer: "adam"
+  aux_loss_weight: 1.0  # Weight for auxiliary losses
+  final_loss_weight: 1.0  # Weight for final classifier loss
+
+evaluation:
+  save_checkpoints: false
+  checkpoint_freq: 30
+  log_interval: 10
+  compute_linear_probing: false
+  save_tsne: false
+
+logging:
+  use_tensorboard: false
+  save_dir: "results/mnist_block_wise"

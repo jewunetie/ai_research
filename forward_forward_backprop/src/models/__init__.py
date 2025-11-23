@@ -1,7 +1,7 @@
 """Model architectures."""
 
 from .ff_layer import FFLayer, compute_goodness, ff_threshold_loss
-from .mlp import MLP, create_mlp, Autoencoder, AutoencoderClassifier
+from .mlp import MLP, create_mlp, Autoencoder, AutoencoderClassifier, BlockWiseMLP
 
 __all__ = [
     "FFLayer",
@@ -10,5 +10,6 @@ __all__ = [
     "MLP",
     "create_mlp",
     "Autoencoder",
-    "AutoencoderClassifier"
+    "AutoencoderClassifier",
+    "BlockWiseMLP"
 ]

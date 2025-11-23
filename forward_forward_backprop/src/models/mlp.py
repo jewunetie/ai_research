@@ -415,3 +415,196 @@ class AutoencoderClassifier(nn.Module):
         """Unfreeze encoder parameters for fine-tuning."""
         for param in self.encoder.parameters():
             param.requires_grad = True
+
+
+class BlockWiseMLP(nn.Module):
+    """
+    MLP with block-wise training support (for SFF replication).
+
+    The network is divided into blocks, each with its own auxiliary classifier.
+    During training, gradients are detached between blocks, so each block is
+    trained with local losses without end-to-end backpropagation.
+
+    This approach is meant to replicate the Supervised Forward-Forward (SFF)
+    findings for validation purposes.
+    """
+
+    def __init__(
+        self,
+        input_dim: int,
+        block_dims: list[list[int]],
+        num_classes: int,
+        activation: str = "relu",
+        dropout: float = 0.0,
+        batch_norm: bool = False
+    ):
+        """
+        Initialize BlockWiseMLP.
+
+        Args:
+            input_dim: Input dimension (e.g., 784 for MNIST)
+            block_dims: List of lists specifying dims for each block
+                       e.g., [[500, 500], [500]] means block1 has 2 layers, block2 has 1
+            num_classes: Number of output classes
+            activation: Activation function
+            dropout: Dropout probability
+            batch_norm: Whether to use batch normalization
+
+        Example:
+            >>> model = BlockWiseMLP(
+            ...     input_dim=784,
+            ...     block_dims=[[500, 500], [500]],
+            ...     num_classes=10
+            ... )
+            >>> # This creates:
+            >>> # - Block 1: 784 -> 500 -> 500 (with aux classifier)
+            >>> # - Block 2: 500 -> 500 (with aux classifier)
+        """
+        super().__init__()
+
+        self.input_dim = input_dim
+        self.block_dims = block_dims
+        self.num_classes = num_classes
+        self.num_blocks = len(block_dims)
+
+        # Build blocks
+        self.blocks = nn.ModuleList()
+        self.aux_classifiers = nn.ModuleList()
+
+        prev_dim = input_dim
+
+        for block_idx, dims in enumerate(block_dims):
+            # Create layers for this block
+            block_layers = []
+            current_dim = prev_dim
+
+            for i, dim in enumerate(dims):
+                # Linear layer
+                block_layers.append(nn.Linear(current_dim, dim))
+
+                # Batch norm
+                if batch_norm:
+                    block_layers.append(nn.BatchNorm1d(dim))
+
+                # Activation
+                if activation == "relu":
+                    block_layers.append(nn.ReLU())
+                elif activation == "tanh":
+                    block_layers.append(nn.Tanh())
+                elif activation == "sigmoid":
+                    block_layers.append(nn.Sigmoid())
+                else:
+                    raise ValueError(f"Unknown activation: {activation}")
+
+                # Dropout
+                if dropout > 0:
+                    block_layers.append(nn.Dropout(dropout))
+
+                current_dim = dim
+
+            # Create block as Sequential
+            self.blocks.append(nn.Sequential(*block_layers))
+
+            # Create auxiliary classifier for this block
+            # Maps block output to class logits
+            aux_classifier = nn.Linear(current_dim, num_classes)
+            self.aux_classifiers.append(aux_classifier)
+
+            # Update prev_dim for next block
+            prev_dim = current_dim
+
+        # Final classifier (uses output of last block)
+        # This is the "main" classifier, auxiliary classifiers are for training
+        self.final_classifier = nn.Linear(prev_dim, num_classes)
+
+        # Initialize weights
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        """Initialize network weights."""
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+
+    def forward(self, x: torch.Tensor, detach_blocks: bool = False) -> torch.Tensor:
+        """
+        Forward pass.
+
+        Args:
+            x: Input tensor [batch_size, input_dim]
+            detach_blocks: If True, detach between blocks (for block-wise training)
+
+        Returns:
+            logits: Class logits from final classifier [batch_size, num_classes]
+        """
+        h = x
+
+        for block in self.blocks:
+            h = block(h)
+
+            # Detach between blocks if requested
+            if detach_blocks:
+                h = h.detach()
+
+        # Final classification
+        logits = self.final_classifier(h)
+
+        return logits
+
+    def forward_with_aux(
+        self,
+        x: torch.Tensor,
+        detach_blocks: bool = True
+    ) -> tuple[torch.Tensor, list[torch.Tensor]]:
+        """
+        Forward pass with auxiliary outputs.
+
+        Used during training to get both final and auxiliary predictions.
+
+        Args:
+            x: Input tensor [batch_size, input_dim]
+            detach_blocks: If True, detach between blocks
+
+        Returns:
+            final_logits: Final classifier logits [batch_size, num_classes]
+            aux_logits_list: List of auxiliary logits for each block
+        """
+        h = x
+        aux_logits_list = []
+
+        for block, aux_classifier in zip(self.blocks, self.aux_classifiers):
+            # Forward through block
+            h = block(h)
+
+            # Get auxiliary predictions
+            aux_logits = aux_classifier(h)
+            aux_logits_list.append(aux_logits)
+
+            # Detach between blocks if requested
+            if detach_blocks:
+                h = h.detach()
+
+        # Final classification
+        final_logits = self.final_classifier(h)
+
+        return final_logits, aux_logits_list
+
+    def get_block_output(self, x: torch.Tensor, block_idx: int) -> torch.Tensor:
+        """
+        Get output of a specific block.
+
+        Args:
+            x: Input tensor
+            block_idx: Index of block to get output from
+
+        Returns:
+            Block output tensor
+        """
+        h = x
+
+        for i in range(block_idx + 1):
+            h = self.blocks[i](h)
+
+        return h

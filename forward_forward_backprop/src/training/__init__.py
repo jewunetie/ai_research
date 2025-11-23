@@ -5,6 +5,7 @@ from .bp_trainer import BPTrainer, train_with_backprop
 from .sequential_phased import SequentialPhasedTrainer
 from .detached_interface import DetachedInterfaceTrainer
 from .autoencoder_trainer import AutoencoderTrainer
+from .block_wise import BlockWiseTrainer
 
 __all__ = [
     "FFTrainer",
@@ -14,4 +15,5 @@ __all__ = [
     "SequentialPhasedTrainer",
     "DetachedInterfaceTrainer",
     "AutoencoderTrainer",
+    "BlockWiseTrainer",
 ]

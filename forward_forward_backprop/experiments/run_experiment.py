@@ -28,13 +28,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.utils.config import Config
 from src.utils.device import get_device
 from src.data.datasets import get_dataloaders, get_dataset_info
-from src.models.mlp import MLP, HybridFFBPModel, Autoencoder
+from src.models.mlp import MLP, HybridFFBPModel, Autoencoder, BlockWiseMLP
 from src.models.ff_layer import FFNetwork
 from src.training.bp_trainer import BPTrainer
 from src.training.ff_trainer import FFTrainer
 from src.training.sequential_phased import SequentialPhasedTrainer
 from src.training.detached_interface import DetachedInterfaceTrainer
 from src.training.autoencoder_trainer import AutoencoderTrainer
+from src.training.block_wise import BlockWiseTrainer
 
 
 def create_model(config: Config, device: torch.device):
@@ -100,6 +101,18 @@ def create_model(config: Config, device: torch.device):
             batch_norm=config.get('model.batch_norm', False)
         ).to(device)
         print(f"Created Autoencoder with {len(config.get('model.encoder_hidden_dims'))} encoder layers")
+
+    elif arch == 'block_wise':
+        # Block-wise MLP for SFF replication
+        model = BlockWiseMLP(
+            input_dim=config.get('model.input_dim'),
+            block_dims=config.get('model.block_dims'),
+            num_classes=config.get('model.num_classes'),
+            activation=config.get('model.activation', 'relu'),
+            dropout=config.get('model.dropout', 0.0),
+            batch_norm=config.get('model.batch_norm', False)
+        ).to(device)
+        print(f"Created BlockWiseMLP with {len(config.get('model.block_dims'))} blocks")
 
     else:
         raise ValueError(f"Unknown architecture: {arch}")
@@ -200,6 +213,20 @@ def create_trainer(approach: str, model, device, config: Config, num_classes: in
         )
         print(f"Initialized AutoencoderTrainer (pretrain_lr={config.get('training.pretrain_learning_rate', 0.001)}, "
               f"finetune_lr={config.get('training.finetune_learning_rate', 0.001)})")
+
+    elif approach == 'block_wise':
+        # Block-wise hybrid (SFF replication)
+        trainer = BlockWiseTrainer(
+            model=model,
+            device=device,
+            learning_rate=config.get('training.learning_rate'),
+            optimizer_type=config.get('training.optimizer', 'adam'),
+            aux_loss_weight=config.get('training.aux_loss_weight', 1.0),
+            final_loss_weight=config.get('training.final_loss_weight', 1.0)
+        )
+        print(f"Initialized BlockWiseTrainer (lr={config.get('training.learning_rate')}, "
+              f"aux_weight={config.get('training.aux_loss_weight', 1.0)}, "
+              f"final_weight={config.get('training.final_loss_weight', 1.0)})")
 
     else:
         raise ValueError(f"Unknown training approach: {approach}")
@@ -402,6 +429,24 @@ def run_experiment(config_path: str):
             'final_test_acc': history['final_val_acc'],
             'best_test_acc': history['best_val_acc'],
             'best_epoch': history['best_epoch'],
+            'history': history
+        }
+
+    elif approach == 'block_wise':
+        num_epochs = config.get('training.num_epochs')
+
+        # BlockWiseTrainer.train() uses auxiliary losses
+        history = trainer.train(
+            train_loader=train_loader,
+            val_loader=test_loader,
+            num_epochs=num_epochs
+        )
+
+        # Adapt results to expected format
+        results = {
+            'final_test_acc': history['val_accs'][-1] if history['val_accs'] else 0.0,
+            'best_test_acc': history['best_val_acc'],
+            'best_epoch': history['best_epoch'] + 1,
             'history': history
         }
 
