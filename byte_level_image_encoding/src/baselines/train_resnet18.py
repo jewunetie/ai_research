@@ -45,7 +45,11 @@ def get_resnet18_cifar10(num_classes: int = 10):
     The original ResNet-18 is designed for ImageNet (224×224),
     so we adapt the first layer for smaller images.
     """
-    model = torchvision.models.resnet18(pretrained=False, num_classes=num_classes)
+    # Use weights=None for torchvision >= 0.13, fallback to pretrained=False for older versions
+    try:
+        model = torchvision.models.resnet18(weights=None, num_classes=num_classes)
+    except TypeError:
+        model = torchvision.models.resnet18(pretrained=False, num_classes=num_classes)
 
     # Adapt first conv layer for CIFAR-10 (32×32 instead of 224×224)
     # Original: kernel_size=7, stride=2

@@ -41,8 +41,15 @@ class AttentionExtractor:
     """
     Extract attention weights from ByteFormer.
 
-    This class hooks into the transformer layers to capture attention weights
-    during forward pass.
+    ⚠️ NOTE: This class is currently a PLACEHOLDER and NOT USED in this script.
+    The script uses SimpleAttentionVisualizer instead (see below), which uses
+    gradient-based saliency maps - more robust across PyTorch versions.
+
+    Extracting raw attention weights from nn.TransformerEncoder is complex because
+    PyTorch's MultiheadAttention doesn't return attention weights by default.
+    This would require modifying the ByteFormer model or using version-specific hooks.
+
+    For production use, use SimpleAttentionVisualizer (implemented below).
     """
 
     def __init__(self, model: ByteFormer):
@@ -55,21 +62,13 @@ class AttentionExtractor:
         self.model = model
         self.attention_weights = []
         self.hooks = []
-
-        # Register hooks for each transformer layer
-        for layer_idx, layer in enumerate(self.model.transformer.layers):
-            hook = layer.self_attn.register_forward_hook(
-                self._get_attention_hook(layer_idx)
-            )
-            self.hooks.append(hook)
+        # NOTE: Hook registration code removed - placeholder implementation
 
     def _get_attention_hook(self, layer_idx: int):
         """Create hook function for specific layer."""
         def hook(module, input, output):
-            # For MultiheadAttention, we need to manually compute attention weights
-            # because PyTorch doesn't return them by default
-            # We'll need to access the attention scores from the module
-            pass  # Placeholder - attention extraction varies by PyTorch version
+            # Placeholder - would need version-specific implementation
+            pass
 
         return hook
 
