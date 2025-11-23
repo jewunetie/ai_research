@@ -263,10 +263,12 @@ def normalize_solution(solution: str) -> str:
         solution: Solution string
 
     Returns:
-        Normalized solution string
+        Normalized solution string (lowercase)
 
     Example:
         >>> normalize_solution("x=3")
+        'x = 3'
+        >>> normalize_solution("X = 3")
         'x = 3'
         >>> normalize_solution("  x  =  -2  ")
         'x = -2'
@@ -277,5 +279,8 @@ def normalize_solution(solution: str) -> str:
     # Normalize "x=" to "x ="
     solution = re.sub(r'([a-zA-Z])=', r'\1 = ', solution)
     solution = re.sub(r'=([0-9])', r'= \1', solution)
+
+    # Convert to lowercase for case-insensitive matching
+    solution = solution.lower()
 
     return solution.strip()
