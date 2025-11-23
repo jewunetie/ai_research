@@ -5,7 +5,7 @@ Analysis script for main experiment results.
 Loads experiment results and computes detailed statistics and comparisons.
 
 Usage:
-    python experiments/main/analyze_main.py results/main/main_*.json
+    python experiments/main/analyze_main.py results/main/main_*.json [--full-report] [--figures]
 """
 
 import sys
@@ -18,6 +18,16 @@ from collections import defaultdict
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+# Import new analysis modules
+try:
+    from src.analysis.statistics import StatisticalAnalyzer, compare_conditions as compare_conditions_new
+    from src.analysis.visualization import ExperimentVisualizer
+    from src.analysis.report_generator import ReportGenerator
+    ANALYSIS_MODULES_AVAILABLE = True
+except ImportError:
+    ANALYSIS_MODULES_AVAILABLE = False
+    print("⚠  Analysis modules not available. Some features will be disabled.")
 
 
 def load_results(results_file: Path) -> Dict:
@@ -208,15 +218,159 @@ def print_analysis(results: Dict, results_file: Path):
     print(f"✓ Detailed results saved to: {df_file}")
 
 
+def generate_advanced_analysis(
+    results: Dict,
+    df: pd.DataFrame,
+    output_dir: Path,
+    generate_figures: bool = False,
+    generate_report: bool = False
+):
+    """
+    Generate advanced analysis using new analysis modules.
+
+    Args:
+        results: Experiment results dictionary
+        df: DataFrame with extracted metrics
+        output_dir: Directory for output files
+        generate_figures: Whether to generate figures
+        generate_report: Whether to generate full report
+    """
+    if not ANALYSIS_MODULES_AVAILABLE:
+        print("⚠  Advanced analysis modules not available. Skipping.")
+        return
+
+    print("=" * 80)
+    print("Advanced Statistical Analysis")
+    print("=" * 80)
+    print()
+
+    # Initialize analyzer
+    analyzer = StatisticalAnalyzer(alpha=0.05, confidence_level=0.95)
+
+    # Perform all pairwise comparisons
+    comparisons = []
+    conditions = df["condition"].unique()
+
+    for metric in ["exact_match", "f1", "semantic_similarity"]:
+        if metric not in df.columns:
+            continue
+
+        metric_comparisons = analyzer.compare_all_conditions(
+            df,
+            metric=metric,
+            condition_col="condition",
+            paired=True
+        )
+        comparisons.extend(metric_comparisons)
+
+    # Print comparison results
+    print(f"Performed {len(comparisons)} pairwise comparisons")
+    print()
+
+    # Show significant comparisons
+    significant = [c for c in comparisons if c.is_significant()]
+    if significant:
+        print(f"Significant comparisons (p < 0.05): {len(significant)}/{len(comparisons)}")
+        print()
+        for comp in significant[:10]:  # Show first 10
+            print(str(comp))
+            print()
+
+    # Generate figures if requested
+    figure_paths = None
+    if generate_figures:
+        print("=" * 80)
+        print("Generating Visualization Figures")
+        print("=" * 80)
+        print()
+
+        figures_dir = output_dir / "figures"
+        visualizer = ExperimentVisualizer()
+
+        # Determine baseline
+        baseline = "full_context" if "full_context" in conditions else None
+
+        # Generate all figures
+        figure_paths = visualizer.create_full_report_figures(
+            df,
+            output_dir=figures_dir,
+            metrics=["exact_match", "f1", "semantic_similarity"],
+            baseline_condition=baseline
+        )
+        print()
+
+        # Generate pairwise comparison figure
+        if comparisons:
+            path = figures_dir / "pairwise_comparisons.png"
+            visualizer.plot_pairwise_comparison(
+                comparisons,
+                save_path=path,
+                title="Statistical Comparisons Across All Metrics"
+            )
+            figure_paths["pairwise"] = path
+
+    # Generate report if requested
+    if generate_report:
+        print("=" * 80)
+        print("Generating Research Report")
+        print("=" * 80)
+        print()
+
+        # Get summary statistics
+        summary_stats = compute_summary_statistics(df)
+
+        # Initialize report generator
+        experiment_name = results.get("config", {}).get("name", "experiment")
+        report_gen = ReportGenerator(experiment_name, output_dir)
+
+        # Generate markdown report
+        markdown = report_gen.generate_markdown_report(
+            results=results,
+            statistics=summary_stats,
+            comparisons=comparisons,
+            figure_paths=figure_paths
+        )
+
+        # Generate HTML report
+        report_gen.generate_html_report(markdown)
+
+        # Generate LaTeX table
+        report_gen.generate_latex_table(summary_stats)
+
+        print()
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Analyze main experiment results"
+        description="Analyze main experiment results",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Basic analysis
+  python analyze_main.py results/main/main_20250101_120000.json
+
+  # Generate figures only
+  python analyze_main.py results/main/main_20250101_120000.json --figures
+
+  # Generate full report with figures
+  python analyze_main.py results/main/main_20250101_120000.json --full-report
+        """
     )
     parser.add_argument(
         "results_file",
         type=Path,
         help="Path to experiment results JSON file"
+    )
+    parser.add_argument(
+        "--figures",
+        action="store_true",
+        help="Generate visualization figures"
+    )
+    parser.add_argument(
+        "--full-report",
+        action="store_true",
+        help="Generate full research report (markdown + HTML + figures)"
     )
     args = parser.parse_args()
 
@@ -228,7 +382,27 @@ def main():
     print()
 
     results = load_results(args.results_file)
+
+    # Run basic analysis (always)
     print_analysis(results, args.results_file)
+    print()
+
+    # Run advanced analysis if requested
+    if args.figures or args.full_report:
+        df = extract_metrics_dataframe(results)
+        output_dir = args.results_file.parent
+
+        generate_advanced_analysis(
+            results=results,
+            df=df,
+            output_dir=output_dir,
+            generate_figures=args.figures or args.full_report,
+            generate_report=args.full_report
+        )
+
+    print("=" * 80)
+    print("Analysis Complete!")
+    print("=" * 80)
 
     return 0
 
